@@ -5,7 +5,6 @@ import { ArrowLeft, Play, Pause, Music } from 'lucide-react'
 import { murekaApiService, ReferenceTrack } from '../../services/murekaApi'
 
 interface MusicLibraryProps {
-  onBack: () => void
   lyrics?: string
   title?: string
   onGenerate?: (selectedTrack?: ReferenceTrack) => void
@@ -14,7 +13,7 @@ interface MusicLibraryProps {
 
 type LibraryTab = 'Library' | 'Used' | 'Mine'
 
-export default function MusicLibrary({ onBack, lyrics, title, onGenerate, isInlineMode = false }: MusicLibraryProps) {
+export default function MusicLibrary({ lyrics, title, onGenerate, isInlineMode = false }: MusicLibraryProps) {
   const [activeTab, setActiveTab] = useState<LibraryTab>('Library')
   const [selectedGenre, setSelectedGenre] = useState<string>('')
   const [selectedMood, setSelectedMood] = useState<string>('')
@@ -85,16 +84,17 @@ export default function MusicLibrary({ onBack, lyrics, title, onGenerate, isInli
     <div className={isInlineMode ? "bg-bg-secondary rounded-2xl shadow-card pb-6" : "min-h-screen bg-bg-primary pb-24"}>
       {/* Header */}
       <div className={isInlineMode ? "px-6 py-4 border-b border-border-subtle" : "sticky top-0 z-10 bg-bg-primary border-b border-border-subtle"}>
-        <button
-          onClick={onBack}
-          className="absolute top-4 left-4 p-3 rounded-full bg-bg-secondary hover:bg-bg-accent transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        
-        {/* Tabs */}
-        <div className="flex justify-center pt-16 pb-4">
-          <div className="flex space-x-8">
+        <div className="flex flex-col items-center p-4">
+          <div className="text-center mb-4">
+            <h1 className="text-xl font-bold text-text-primary">Sync Music</h1>
+            <p className="text-sm text-text-secondary">
+              {title && `"${title}" • `}Choose a reference track
+            </p>
+          </div>
+          
+          {/* Tabs */}
+          <div className="flex justify-center">
+            <div className="flex space-x-8">
             {(['Library', 'Used', 'Mine'] as LibraryTab[]).map((tab) => (
               <button
                 key={tab}
@@ -108,6 +108,7 @@ export default function MusicLibrary({ onBack, lyrics, title, onGenerate, isInli
                 {tab}
               </button>
             ))}
+            </div>
           </div>
         </div>
       </div>

@@ -146,7 +146,6 @@ export default function CreationStudio() {
         {expandedPath === 'singer' && (
           <div id="singer-section" className="mt-8 animate-entrance">
             <SingerSelection 
-              onBack={handlePathCollapse}
               lyrics={lyrics}
               title={songTitle}
               isInlineMode={true}
@@ -157,7 +156,6 @@ export default function CreationStudio() {
         {expandedPath === 'custom' && (
           <div id="custom-section" className="mt-8 animate-entrance">
             <CustomOptions 
-              onBack={handlePathCollapse}
               lyrics={lyrics}
               title={songTitle}
               isInlineMode={true}
@@ -168,7 +166,6 @@ export default function CreationStudio() {
         {expandedPath === 'music' && (
           <div id="music-section" className="mt-8 animate-entrance">
             <MusicLibrary 
-              onBack={handlePathCollapse}
               lyrics={lyrics}
               title={songTitle}
               onGenerate={handleGenerateSong}

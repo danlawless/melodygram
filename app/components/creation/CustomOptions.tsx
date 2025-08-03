@@ -5,7 +5,6 @@ import { ArrowLeft, Loader2, AlertCircle, Zap, X, Shuffle } from 'lucide-react'
 import { murekaApiService, SongGenerationResponse } from '../../services/murekaApi'
 
 interface CustomOptionsProps {
-  onBack: () => void
   lyrics?: string
   title?: string
   isInlineMode?: boolean
@@ -57,7 +56,7 @@ const vocalOptions: VocalOption[] = [
   { id: 'male', name: 'male vocal', value: 'male' }
 ]
 
-export default function CustomOptions({ onBack, lyrics, title, isInlineMode = false }: CustomOptionsProps) {
+export default function CustomOptions({ lyrics, title, isInlineMode = false }: CustomOptionsProps) {
   // Selection states
   const [selectedStyle, setSelectedStyle] = useState<string>('')
   const [selectedMood, setSelectedMood] = useState<string>('')
@@ -147,23 +146,12 @@ export default function CustomOptions({ onBack, lyrics, title, isInlineMode = fa
     <div className={isInlineMode ? "bg-bg-secondary rounded-2xl shadow-card" : "min-h-screen bg-bg-primary"}>
       {/* Header */}
       <div className={isInlineMode ? "px-6 py-4 border-b border-border-subtle" : "sticky top-0 z-10 bg-bg-primary/95 backdrop-blur-sm border-b border-border-subtle"}>
-        <div className="flex items-center justify-between p-4">
-          <button
-            onClick={onBack}
-            className="p-3 rounded-full bg-bg-secondary hover:bg-bg-accent transition-colors touch-target"
-          >
-            <ArrowLeft className="w-5 h-5 text-text-primary" />
-          </button>
-          
-          <div className="text-center">
-            <h1 className="text-xl font-bold text-text-primary">Custom Style</h1>
+        <div className="flex items-center justify-center p-4">
+          <div className="flex-1 text-center">
+            <h1 className="text-xl font-bold text-text-primary">Choose a Style</h1>
             <p className="text-sm text-text-secondary">
-              {getSelectedOptionsText()}
+              {title && `"${title}" • `}{getSelectedOptionsText()}
             </p>
-          </div>
-          
-          <div className="w-12 h-12 flex items-center justify-center">
-            <Shuffle className="w-5 h-5 text-text-secondary" />
           </div>
         </div>
       </div>

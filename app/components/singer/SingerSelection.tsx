@@ -5,13 +5,12 @@ import { ArrowLeft, Star, Heart, Zap, Loader2, AlertCircle, Search, Filter } fro
 import { Singer, murekaApiService, SongGenerationResponse } from '../../services/murekaApi'
 
 interface SingerSelectionProps {
-  onBack: () => void
   lyrics?: string
   title?: string
   isInlineMode?: boolean
 }
 
-export default function SingerSelection({ onBack, lyrics, title, isInlineMode = false }: SingerSelectionProps) {
+export default function SingerSelection({ lyrics, title, isInlineMode = false }: SingerSelectionProps) {
   const [selectedSinger, setSelectedSinger] = useState<string | null>(null)
   const [singers, setSingers] = useState<Singer[]>([])
   const [loading, setLoading] = useState(true)
@@ -125,17 +124,10 @@ export default function SingerSelection({ onBack, lyrics, title, isInlineMode = 
       {/* Header */}
       <div className={isInlineMode ? "px-6 py-4 border-b border-border-subtle" : "sticky top-0 z-10 bg-bg-primary/95 backdrop-blur-sm border-b border-border-subtle"}>
         <div className="flex items-center justify-between p-4">
-          <button
-            onClick={onBack}
-            className="p-3 rounded-full bg-bg-secondary hover:bg-bg-accent transition-colors touch-target"
-          >
-            <ArrowLeft className="w-5 h-5 text-text-primary" />
-          </button>
-          
-          <div className="text-center">
-            <h1 className="text-xl font-bold text-text-primary">Choose Your Singer</h1>
+          <div className="flex-1 text-center">
+            <h1 className="text-xl font-bold text-text-primary">Pick a Singer</h1>
             <p className="text-sm text-text-secondary">
-              {loading ? 'Loading singers...' : `${filteredSingers.length} AI voices available`}
+              {title && `"${title}" • `}{loading ? 'Loading singers...' : `${filteredSingers.length} AI voices available`}
             </p>
           </div>
           
