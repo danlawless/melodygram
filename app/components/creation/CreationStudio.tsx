@@ -195,11 +195,9 @@ export default function CreationStudio() {
 
   // Validation logic
   const isFormValid = () => {
-    const hasCredits = creditSystemService.hasEnoughCredits(songLength)
     return songTitle.trim() !== '' && 
            lyrics.trim() !== '' && 
            songLength > 0 &&
-           hasCredits &&
            hasImage &&
            selectedVocal !== ''
   }
@@ -281,13 +279,6 @@ export default function CreationStudio() {
   const handleGenerateSong = async () => {
     if (!isFormValid()) return
 
-    // Check credits before starting generation
-    if (!creditSystemService.hasEnoughCredits(songLength)) {
-      const costEstimate = creditSystemService.getCostEstimate(songLength)
-      setGenerationError(`Not enough credits! ${costEstimate.message}. Purchase more credits to continue.`)
-      return
-    }
-
     // Reset avatar video URL when starting new generation
     setAvatarVideoUrl(null)
 
@@ -313,14 +304,6 @@ export default function CreationStudio() {
       // Save initial song to storage
       songStorageService.saveSong(newSong)
       console.log('🎵 Song creation started:', songTitle)
-      
-      // Spend credits immediately (before generation starts)
-      const creditsSpent = creditSystemService.spendCredits(songLength, songId, songTitle)
-      if (!creditsSpent) {
-        throw new Error('Failed to process credits. Please try again.')
-      }
-      
-      console.log(`💳 Credits spent for ${songLength}s song generation`)
       
       // Step 1: Generate song with Mureka MCP tools
       console.log('🎤 Generating song with Mureka MCP tools...')
@@ -706,8 +689,7 @@ export default function CreationStudio() {
                   {!hasImage && "Upload an avatar • "}
                   {songLength <= 0 && "Select a song length • "}
                   {lyrics.trim() === '' && "Write lyrics • "}
-                  {songTitle.trim() === '' && "Add a song title • "}
-                  {!creditSystemService.hasEnoughCredits(songLength) && songLength > 0 && `Need ${creditSystemService.getCostEstimate(songLength).credits - creditSystemService.getUserCredits().balance} more credits`}
+                  {songTitle.trim() === '' && "Add a song title"}
                 </p>
               </div>
             )}
