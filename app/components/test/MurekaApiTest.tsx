@@ -26,9 +26,25 @@ export default function MurekaApiTest() {
 
   const testLyricGeneration = () => testEndpoint('lyrics', () => 
     murekaApiService.generateLyrics({
-      prompt: 'Write a happy birthday song for Jessica',
+      prompt: 'Write a happy birthday song for Jessica with upbeat energy and celebration vibes',
       style: 'pop',
       mood: 'happy'
+    })
+  )
+
+  const testCustomPrompt = () => testEndpoint('customPrompt', () => 
+    murekaApiService.generateLyrics({
+      prompt: 'Create emotional lyrics about a long-distance relationship, focusing on missing someone special and the hope of reuniting. Make it heartfelt and relatable.',
+      style: 'ballad',
+      mood: 'romantic'
+    })
+  )
+
+  const testCreativePrompt = () => testEndpoint('creativePrompt', () => 
+    murekaApiService.generateLyrics({
+      prompt: 'Write an adventurous song about exploring new cities, trying new foods, and making unexpected friends while traveling. Capture the excitement and freedom of discovery.',
+      style: 'indie',
+      mood: 'energetic'
     })
   )
 
@@ -53,13 +69,29 @@ export default function MurekaApiTest() {
     <div className="p-6 max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold mb-6">Mureka API Test Dashboard</h1>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         <button
           onClick={testLyricGeneration}
           disabled={loading === 'lyrics'}
           className="p-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50"
         >
-          {loading === 'lyrics' ? 'Testing...' : 'Test Lyric Generation'}
+          {loading === 'lyrics' ? 'Testing...' : 'Test Basic Lyrics'}
+        </button>
+
+        <button
+          onClick={testCustomPrompt}
+          disabled={loading === 'customPrompt'}
+          className="p-4 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 disabled:opacity-50"
+        >
+          {loading === 'customPrompt' ? 'Testing...' : 'Test Emotional Prompt'}
+        </button>
+
+        <button
+          onClick={testCreativePrompt}
+          disabled={loading === 'creativePrompt'}
+          className="p-4 bg-cyan-500 text-white rounded-lg hover:bg-cyan-600 disabled:opacity-50"
+        >
+          {loading === 'creativePrompt' ? 'Testing...' : 'Test Creative Prompt'}
         </button>
 
         <button

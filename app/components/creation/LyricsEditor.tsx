@@ -15,16 +15,22 @@ interface LyricsEditorProps {
 export default function LyricsEditor({ lyrics, onLyricsChange, imagePrompt, showValidation = false }: LyricsEditorProps) {
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [customPrompt, setCustomPrompt] = useState('')
+  const [showPromptInput, setShowPromptInput] = useState(false)
 
   const handleGenerateLyrics = async () => {
     setIsGenerating(true)
     setError(null)
     
     try {
-      // Create a prompt based on image context or use a default
-      const prompt = imagePrompt 
-        ? `Create song lyrics inspired by this image description: ${imagePrompt}. Make it emotional and meaningful.`
-        : 'Create beautiful song lyrics about love, life, and meaningful moments. Include verse and chorus structure.'
+      // Create a prompt based on custom input, image context, or use a default
+      let prompt = customPrompt.trim()
+      
+      if (!prompt) {
+        prompt = imagePrompt 
+          ? `Create song lyrics inspired by this image description: ${imagePrompt}. Make it emotional and meaningful.`
+          : 'Create beautiful song lyrics about love, life, and meaningful moments. Include verse and chorus structure.'
+      }
 
       const response = await murekaApiService.generateLyrics({
         prompt,
@@ -95,29 +101,71 @@ In this moment, we're alive`
             </div>
           )}
         </div>
-        <button
-          onClick={handleGenerateLyrics}
-          disabled={isGenerating}
-          className="btn-secondary flex items-center gap-2 px-4 py-2 text-sm"
-        >
-          {isGenerating ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Generating...
-            </>
-          ) : (
-            <>
-              <Sparkles className="w-4 h-4" />
-              Generate
-            </>
-          )}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowPromptInput(!showPromptInput)}
+            className="btn-ghost px-3 py-2 text-sm"
+            title="Customize lyrics prompt"
+          >
+            ✨ Custom Prompt
+          </button>
+          <button
+            onClick={handleGenerateLyrics}
+            disabled={isGenerating}
+            className="btn-secondary flex items-center gap-2 px-4 py-2 text-sm"
+          >
+            {isGenerating ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4" />
+                Generate
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Error Message */}
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
           <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
+        </div>
+      )}
+
+      {/* Custom Prompt Input */}
+      {showPromptInput && (
+        <div className="space-y-3 p-4 bg-purple-50 border border-purple-200 rounded-xl">
+          <div className="flex items-center justify-between">
+            <h4 className="font-medium text-purple-900">Custom Lyrics Prompt</h4>
+            <button
+              onClick={() => setShowPromptInput(false)}
+              className="text-purple-600 hover:text-purple-800"
+            >
+              ✕
+            </button>
+          </div>
+          <textarea
+            value={customPrompt}
+            onChange={(e) => setCustomPrompt(e.target.value)}
+            placeholder="Describe what you want your lyrics to be about... (e.g., 'Write a song about overcoming challenges and finding strength', 'Create lyrics about a summer road trip with friends', 'Write emotional lyrics about missing someone')"
+            className="w-full p-3 border border-purple-300 rounded-lg resize-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            rows={3}
+          />
+          <div className="flex items-center justify-between text-sm">
+            <p className="text-purple-600">
+              💡 Be specific about theme, mood, story, or emotions you want
+            </p>
+            <button
+              onClick={() => setCustomPrompt('')}
+              className="text-purple-600 hover:text-purple-800 underline"
+            >
+              Clear
+            </button>
+          </div>
         </div>
       )}
 
