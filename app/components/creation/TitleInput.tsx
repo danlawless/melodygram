@@ -25,11 +25,8 @@ export default function TitleInput({ title, onTitleChange, showValidation = fals
           />
         </div>
         {showValidation && title.trim() !== '' && (
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-              <span className="text-white text-xs">✓</span>
-            </div>
-            <span className="text-green-600 text-sm font-medium">Complete</span>
+          <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+            <span className="text-white text-xs">✓</span>
           </div>
         )}
       </div>
