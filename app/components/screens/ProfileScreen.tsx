@@ -19,6 +19,7 @@ import {
 import { userProfileService, UserProfile, PaymentMethod, CreditPackage } from '../../services/userProfile'
 import { creditSystemService } from '../../services/creditSystem'
 import { useToast } from '../ui/Toast'
+import AvatarEditor from '../profile/AvatarEditor'
 
 interface ProfileScreenProps {
   onBack: () => void
@@ -37,6 +38,10 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [bio, setBio] = useState('')
+  const [avatar, setAvatar] = useState('')
+  
+  // Avatar editor state
+  const [isAvatarEditorOpen, setIsAvatarEditorOpen] = useState(false)
   
   // Credit state
   const [creditBalance, setCreditBalance] = useState(0)
@@ -66,6 +71,7 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
       setName(userProfile.name)
       setEmail(userProfile.email)
       setBio(userProfile.bio)
+      setAvatar(userProfile.avatar || '')
       setPaymentMethods(userProfile.paymentMethods)
       
       // Load credit balance
@@ -91,7 +97,8 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
         ...profile,
         name,
         email,
-        bio
+        bio,
+        avatar
       })
       
       setProfile(updatedProfile)
@@ -172,6 +179,17 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
         message: 'Your card has been successfully removed.'
       })
     }
+  }
+
+  // Handle avatar change
+  const handleAvatarChange = (newAvatarUrl: string) => {
+    setAvatar(newAvatarUrl)
+    setIsAvatarEditorOpen(false)
+    showToast({
+      type: 'success',
+      title: 'Avatar updated!',
+      message: 'Your profile picture has been updated.'
+    })
   }
 
   const getUserStats = () => {
@@ -268,10 +286,23 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
           <div className="space-y-6">
             {/* Profile Picture */}
             <div className="text-center space-y-4">
-              <div className="w-24 h-24 rounded-full bg-melody-gradient flex items-center justify-center mx-auto shadow-glow">
-                <User className="w-12 h-12 text-white" />
+              <div className="w-24 h-24 rounded-full mx-auto shadow-glow overflow-hidden border-4 border-melody-purple/20">
+                {avatar ? (
+                  <img 
+                    src={avatar} 
+                    alt="Profile Avatar" 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-melody-gradient flex items-center justify-center">
+                    <User className="w-12 h-12 text-white" />
+                  </div>
+                )}
               </div>
-              <button className="text-melody-purple hover:text-melody-pink transition-colors text-sm font-medium">
+              <button 
+                onClick={() => setIsAvatarEditorOpen(true)}
+                className="text-melody-purple hover:text-melody-pink transition-colors text-sm font-medium"
+              >
                 Change Avatar
               </button>
             </div>
@@ -550,6 +581,15 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Avatar Editor Modal */}
+      {isAvatarEditorOpen && (
+        <AvatarEditor
+          currentAvatar={avatar}
+          onAvatarChange={handleAvatarChange}
+          onClose={() => setIsAvatarEditorOpen(false)}
+        />
       )}
     </div>
   )

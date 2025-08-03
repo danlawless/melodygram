@@ -149,7 +149,7 @@ export default function LyricsEditor({
             <button
               onClick={handleGenerateLyrics}
               disabled={isGenerating || songLength <= 0}
-              className="btn-secondary flex items-center gap-2 px-4 py-2 text-sm"
+              className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
             >
                 {isGenerating ? (
                   <>
@@ -286,17 +286,17 @@ export default function LyricsEditor({
             <button
               onClick={handleGenerateLyrics}
               disabled={isGenerating || songLength <= 0}
-              className="w-full bg-melody-purple hover:bg-melody-purple/90 disabled:bg-melody-purple/50 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+              className="w-full flex items-center justify-center space-x-2 px-3 py-3 rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isGenerating ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Generating Lyrics & Title...
+                  <span>Generating Lyrics & Title...</span>
                 </>
               ) : (
                 <>
                   <Sparkles className="w-4 h-4" />
-                  Generate Custom Lyrics
+                  <span>Generate Custom Lyrics</span>
                 </>
               )}
             </button>
