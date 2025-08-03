@@ -18,6 +18,27 @@ export default function LyricsEditor({ lyrics, onLyricsChange, onTitleChange, im
   const [error, setError] = useState<string | null>(null)
   const [customPrompt, setCustomPrompt] = useState('')
   const [showPromptInput, setShowPromptInput] = useState(false)
+  
+  // Lyric generation options
+  const [selectedStyle, setSelectedStyle] = useState<string>('pop')
+  const [selectedMood, setSelectedMood] = useState<string>('uplifting')
+  const [selectedGenre, setSelectedGenre] = useState<string>('pop')
+
+  // Available options (aligned with Mureka API)
+  const styles = [
+    'pop', 'ballad', 'indie', 'rock', 'jazz', 'classical', 'electronic', 
+    'hip-hop', 'r&b', 'country', 'folk', 'blues', 'reggae', 'alternative', 'funk'
+  ]
+  
+  const moods = [
+    'happy', 'uplifting', 'energetic', 'romantic', 'calm', 'dreamy', 
+    'melancholic', 'sad', 'intense', 'chill', 'mysterious', 'playful'
+  ]
+  
+  const genres = [
+    'pop', 'rock', 'jazz', 'classical', 'electronic', 'hip-hop', 'r&b', 
+    'country', 'folk', 'blues', 'reggae', 'alternative', 'indie', 'funk'
+  ]
 
   const handleGenerateLyrics = async () => {
     setIsGenerating(true)
@@ -35,8 +56,9 @@ export default function LyricsEditor({ lyrics, onLyricsChange, onTitleChange, im
 
       const response = await murekaApiService.generateLyrics({
         prompt,
-        style: 'pop',
-        mood: 'uplifting',
+        style: selectedStyle,
+        mood: selectedMood,
+        genre: selectedGenre,
         language: 'english'
       })
       
@@ -81,7 +103,7 @@ In this moment, we're alive`
   const isNearLimit = characterCount > maxChars * 0.8
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-lyrics-editor>
       {/* Header with Generate Button */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -103,6 +125,7 @@ In this moment, we're alive`
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowPromptInput(!showPromptInput)}
+            data-custom-prompt-btn
             className={`px-3 py-2 text-sm rounded-lg border transition-colors ${
               showPromptInput 
                 ? 'bg-melody-purple text-white border-melody-purple' 
@@ -110,11 +133,12 @@ In this moment, we're alive`
             }`}
             title="Customize lyrics prompt"
           >
-            ✨ Custom Prompt
+            ✨ Custom
           </button>
           <button
             onClick={handleGenerateLyrics}
             disabled={isGenerating}
+            data-generate-btn
             className="btn-secondary flex items-center gap-2 px-4 py-2 text-sm"
           >
             {isGenerating ? (
@@ -139,11 +163,11 @@ In this moment, we're alive`
         </div>
       )}
 
-      {/* Custom Prompt Input */}
+      {/* Custom Settings */}
       {showPromptInput && (
-        <div className="space-y-4 p-4 bg-bg-secondary border border-border-subtle rounded-xl">
+        <div className="space-y-6 p-4 bg-bg-secondary border border-border-subtle rounded-xl">
           <div className="flex items-center justify-between">
-            <h4 className="font-medium text-text-primary">Custom Lyrics Prompt</h4>
+            <h4 className="font-medium text-text-primary">Musical Style</h4>
             <button
               onClick={() => setShowPromptInput(false)}
               className="text-text-secondary hover:text-text-primary transition-colors"
@@ -151,23 +175,84 @@ In this moment, we're alive`
               ✕
             </button>
           </div>
-          <textarea
-            value={customPrompt}
-            onChange={(e) => setCustomPrompt(e.target.value)}
-            placeholder="Describe what you want your lyrics to be about... (e.g., 'Write a song about overcoming challenges and finding strength', 'Create lyrics about a summer road trip with friends', 'Write emotional lyrics about missing someone')"
-            className="w-full p-4 bg-bg-primary border border-border-subtle rounded-xl text-text-primary placeholder-text-secondary resize-none focus:ring-2 focus:ring-melody-purple/20 focus:border-melody-purple transition-colors"
-            rows={6}
-          />
-          <div className="flex items-center justify-between text-sm">
-            <p className="text-text-secondary">
-              💡 Be specific about theme, mood, story, or emotions you want
-            </p>
-            <button
-              onClick={() => setCustomPrompt('')}
-              className="text-melody-purple hover:text-melody-purple/80 underline transition-colors"
-            >
-              Clear
-            </button>
+          
+          {/* Lyric Generation Options */}
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Musical Style */}
+              <div>
+                <select
+                  value={selectedStyle}
+                  onChange={(e) => setSelectedStyle(e.target.value)}
+                  className="w-full bg-bg-primary border border-border-subtle rounded-lg px-3 py-2 text-text-primary focus:ring-2 focus:ring-melody-purple/20 focus:border-melody-purple transition-colors"
+                >
+                  {styles.map((style) => (
+                    <option key={style} value={style}>
+                      {style.charAt(0).toUpperCase() + style.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Mood */}
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-2">
+                  Mood
+                </label>
+                <select
+                  value={selectedMood}
+                  onChange={(e) => setSelectedMood(e.target.value)}
+                  className="w-full bg-bg-primary border border-border-subtle rounded-lg px-3 py-2 text-text-primary focus:ring-2 focus:ring-melody-purple/20 focus:border-melody-purple transition-colors"
+                >
+                  {moods.map((mood) => (
+                    <option key={mood} value={mood}>
+                      {mood.charAt(0).toUpperCase() + mood.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Genre */}
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-2">
+                  Genre
+                </label>
+                <select
+                  value={selectedGenre}
+                  onChange={(e) => setSelectedGenre(e.target.value)}
+                  className="w-full bg-bg-primary border border-border-subtle rounded-lg px-3 py-2 text-text-primary focus:ring-2 focus:ring-melody-purple/20 focus:border-melody-purple transition-colors"
+                >
+                  {genres.map((genre) => (
+                    <option key={genre} value={genre}>
+                      {genre.charAt(0).toUpperCase() + genre.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Custom Prompt */}
+          <div className="space-y-4">
+            <h5 className="text-sm font-medium text-text-primary">Custom Prompt</h5>
+            <textarea
+              value={customPrompt}
+              onChange={(e) => setCustomPrompt(e.target.value)}
+              placeholder="Describe what you want your lyrics to be about... (e.g., 'Write a song about overcoming challenges and finding strength', 'Create lyrics about a summer road trip with friends', 'Write emotional lyrics about missing someone')"
+              className="w-full p-4 bg-bg-primary border border-border-subtle rounded-xl text-text-primary placeholder-text-secondary resize-none focus:ring-2 focus:ring-melody-purple/20 focus:border-melody-purple transition-colors"
+              rows={6}
+            />
+            <div className="flex items-center justify-between text-sm">
+              <p className="text-text-secondary">
+                💡 Be specific about theme, mood, story, or emotions you want
+              </p>
+              <button
+                onClick={() => setCustomPrompt('')}
+                className="text-melody-purple hover:text-melody-purple/80 underline transition-colors"
+              >
+                Clear
+              </button>
+            </div>
           </div>
         </div>
       )}

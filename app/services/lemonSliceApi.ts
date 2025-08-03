@@ -1,15 +1,13 @@
 import axios from 'axios'
 
-// LemonSlice API configuration
-const LEMONSLICE_API_BASE_URL = process.env.NEXT_PUBLIC_LEMONSLICE_API_BASE_URL || 'https://lemonslice.com/api'
-const LEMONSLICE_API_KEY = process.env.LEMONSLICE_API_KEY || 'sk-1990426d-aff0-4c6d-ab38-6aea2af25018'
+// LemonSlice API configuration - using Next.js API routes to avoid CORS
+const LEMONSLICE_API_BASE_URL = '/api/lemonslice'
 
 // Axios instance with default configuration
 const lemonSliceApi = axios.create({
   baseURL: LEMONSLICE_API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${LEMONSLICE_API_KEY}`,
   },
   timeout: 120000, // 2 minutes timeout for video processing
 })
@@ -154,7 +152,7 @@ class LemonSliceApiService {
    */
   async getPresets(): Promise<AvatarPreset[]> {
     try {
-      const response = await lemonSliceApi.get<{ presets: AvatarPreset[] }>('/avatar/presets')
+      const response = await lemonSliceApi.get<{ presets: AvatarPreset[] }>('/presets')
       return response.data.presets || []
     } catch (error) {
       console.error('Error fetching avatar presets:', error)

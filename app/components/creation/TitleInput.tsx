@@ -64,7 +64,7 @@ export default function TitleInput({
       {/* Header with Validation */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h2 className="text-xl font-semibold text-text-primary">Song Title</h2>
+          <h2 className="text-xl font-semibold text-text-primary">Title</h2>
           <TipButton
             title="Crafting Your Song Title"
             content="A great song title captures the essence of your lyrics and draws listeners in. Keep it memorable, emotional, and true to your song's message."

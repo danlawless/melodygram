@@ -1,18 +1,27 @@
 'use client'
 
 import React, { useState, useCallback } from 'react'
-import { Upload, Image as ImageIcon, X } from 'lucide-react'
+import { Upload, Image as ImageIcon, X, Sparkles, Loader2 } from 'lucide-react'
 import TipButton from '../ui/TipButton'
+import { imageGenerationService } from '../../services/imageGeneration'
 
 interface ImageUploadProps {
   uploadedImage: File | null
   onImageUpload: (file: File | null) => void
+  onImageGenerated?: (imageUrl: string | null) => void
   showValidation?: boolean
 }
 
-export default function ImageUpload({ uploadedImage, onImageUpload, showValidation = false }: ImageUploadProps) {
+export default function ImageUpload({ uploadedImage, onImageUpload, onImageGenerated, showValidation = false }: ImageUploadProps) {
   const [isDragOver, setIsDragOver] = useState(false)
   const [preview, setPreview] = useState<string | null>(null)
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [customPrompt, setCustomPrompt] = useState('')
+  const [showPromptInput, setShowPromptInput] = useState(false)
+  const [selectedStyle, setSelectedStyle] = useState('')
+  const [selectedMood, setSelectedMood] = useState('')
+  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null)
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -23,6 +32,11 @@ export default function ImageUpload({ uploadedImage, onImageUpload, showValidati
       const file = files[0]
       if (file.type.startsWith('image/')) {
         onImageUpload(file)
+        setGeneratedImageUrl(null) // Clear any generated image when uploading new file
+        // Notify parent that generated image was cleared
+        if (onImageGenerated) {
+          onImageGenerated(null)
+        }
         // Create preview
         const reader = new FileReader()
         reader.onload = (e) => setPreview(e.target?.result as string)
@@ -35,6 +49,11 @@ export default function ImageUpload({ uploadedImage, onImageUpload, showValidati
     const file = e.target.files?.[0]
     if (file) {
       onImageUpload(file)
+      setGeneratedImageUrl(null) // Clear any generated image when uploading new file
+      // Notify parent that generated image was cleared
+      if (onImageGenerated) {
+        onImageGenerated(null)
+      }
       // Create preview
       const reader = new FileReader()
       reader.onload = (e) => setPreview(e.target?.result as string)
@@ -45,26 +64,210 @@ export default function ImageUpload({ uploadedImage, onImageUpload, showValidati
   const removeImage = () => {
     onImageUpload(null)
     setPreview(null)
+    setGeneratedImageUrl(null)
+    // Notify parent that generated image was cleared
+    if (onImageGenerated) {
+      onImageGenerated(null)
+    }
+  }
+
+  const handleGenerateAvatar = async () => {
+    setIsGenerating(true)
+    setError(null)
+    setGeneratedImageUrl(null)
+    
+    try {
+      // Create a prompt based on custom input or use a default avatar prompt
+      let prompt = customPrompt.trim()
+      
+      if (!prompt) {
+        prompt = 'A professional headshot portrait of a friendly person with a warm smile, photorealistic, studio lighting, high quality'
+      }
+
+      const response = await imageGenerationService.generateImage({
+        prompt: `${prompt}, portrait photography style, clear facial features, suitable for avatar use`,
+        style: selectedStyle || 'photorealistic',
+        mood: selectedMood || 'friendly',
+        size: '1024x1024',
+        quality: 'hd'
+      })
+      
+      if (response.imageUrl) {
+        // Set the generated image URL for display
+        setGeneratedImageUrl(response.imageUrl)
+        setPreview(response.imageUrl)
+        console.log(`🎨 Avatar generated successfully! Image URL available for display.`)
+        
+        // Notify parent that we have a generated image
+        if (onImageGenerated) {
+          onImageGenerated(response.imageUrl)
+        }
+        
+        // Check if this is an external URL that will definitely fail CORS
+        const isExternalUrl = response.imageUrl.includes('blob.core.windows.net') || 
+                             response.imageUrl.includes('openai.com') ||
+                             !response.imageUrl.startsWith(window.location.origin)
+        
+        if (isExternalUrl) {
+          // Skip file conversion for external URLs to avoid CORS errors
+          console.log(`🔒 External image URL detected - skipping file conversion to avoid CORS errors. Image URL available for display.`)
+        } else {
+          // Only try file conversion for same-origin URLs
+          try {
+            const file = await imageGenerationService.urlToFile(response.imageUrl, 'generated-avatar.png')
+            onImageUpload(file)
+            console.log(`✅ Image converted to file: ${file.name} (${file.size} bytes)`)
+          } catch (conversionError) {
+            console.warn(`⚠️ Could not convert to file: ${conversionError}`)
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error generating avatar:', error)
+      setError('Failed to generate avatar. Please try again.')
+    } finally {
+      setIsGenerating(false)
+    }
   }
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <h2 className="text-xl font-semibold text-text-primary">Upload Photo</h2>
-          <TipButton
-            title="Image Inspiration"
-            content="Upload an image that captures the mood, style, or story of your song. This visual inspiration helps the AI understand the emotional tone and aesthetic you're aiming for."
-            position="right"
-            size="sm"
-          />
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-semibold text-text-primary">Vocalist</h2>
+            <TipButton
+              title="Avatar Generation"
+              content="Upload an image or generate an AI avatar that captures the mood, style, or personality of your vocalist. This visual inspiration helps create the perfect singing avatar for your song."
+              position="right"
+              size="sm"
+            />
+          </div>
+          {showValidation && uploadedImage && (
+            <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+              <span className="text-white text-xs">✓</span>
+            </div>
+          )}
         </div>
-                    {showValidation && uploadedImage && (
-              <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                <span className="text-white text-xs">✓</span>
-              </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowPromptInput(!showPromptInput)}
+            className={`px-3 py-2 text-sm rounded-lg border transition-colors ${
+              showPromptInput 
+                ? 'bg-melody-purple text-white border-melody-purple' 
+                : 'bg-bg-secondary text-text-secondary border-border-subtle hover:text-text-primary hover:border-melody-purple/30'
+            }`}
+            title="Customize avatar prompt"
+          >
+            ✨ Custom
+          </button>
+          <button
+            onClick={handleGenerateAvatar}
+            disabled={isGenerating}
+            className="btn-secondary flex items-center gap-2 px-4 py-2 text-sm"
+          >
+            {isGenerating ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4" />
+                Generate
+              </>
             )}
+          </button>
+        </div>
       </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+          <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
+        </div>
+      )}
+
+      {/* Custom Prompt Input */}
+      {showPromptInput && (
+        <div className="space-y-4 p-4 bg-bg-secondary border border-border-subtle rounded-xl">
+          <div className="flex items-center justify-between">
+            <h4 className="font-medium text-text-primary">Personalization</h4>
+            <button
+              onClick={() => setShowPromptInput(false)}
+              className="text-text-secondary hover:text-text-primary transition-colors"
+            >
+              ✕
+            </button>
+          </div>
+          
+          {/* Description Textarea */}
+          <textarea
+            value={customPrompt}
+            onChange={(e) => setCustomPrompt(e.target.value)}
+            placeholder="Describe the avatar you want to generate (e.g., 'A professional headshot of a friendly person with a warm smile')"
+            className="w-full p-4 bg-bg-primary border border-border-subtle rounded-xl text-text-primary placeholder-text-secondary resize-none focus:ring-2 focus:ring-melody-purple/20 focus:border-melody-purple transition-colors"
+            rows={4}
+          />
+          
+          {/* Style and Mood Controls */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Style Dropdown */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-text-primary">Style</label>
+              <select
+                value={selectedStyle}
+                onChange={(e) => setSelectedStyle(e.target.value)}
+                className="w-full p-3 bg-bg-primary border border-border-subtle rounded-xl text-text-primary focus:ring-2 focus:ring-melody-purple/20 focus:border-melody-purple transition-colors appearance-none cursor-pointer"
+              >
+                {imageGenerationService.getStyleOptions().map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            {/* Mood Dropdown */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-text-primary">Mood</label>
+              <select
+                value={selectedMood}
+                onChange={(e) => setSelectedMood(e.target.value)}
+                className="w-full p-3 bg-bg-primary border border-border-subtle rounded-xl text-text-primary focus:ring-2 focus:ring-melody-purple/20 focus:border-melody-purple transition-colors appearance-none cursor-pointer"
+              >
+                {imageGenerationService.getMoodOptions().map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          
+          <div className="flex items-center justify-between text-sm">
+            <p className="text-text-secondary">
+              💡 Combine description, style, and mood for perfect results
+            </p>
+            <button
+              onClick={() => {
+                setCustomPrompt('')
+                setSelectedStyle('')
+                setSelectedMood('')
+                setGeneratedImageUrl(null)
+                setError(null)
+                // Notify parent that generated image was cleared
+                if (onImageGenerated) {
+                  onImageGenerated(null)
+                }
+              }}
+              className="text-melody-purple hover:text-melody-purple/80 underline transition-colors"
+            >
+              Clear All
+            </button>
+          </div>
+        </div>
+      )}
       
       {!preview ? (
         <div
@@ -111,11 +314,11 @@ export default function ImageUpload({ uploadedImage, onImageUpload, showValidati
           </div>
         </div>
       ) : (
-        <div className="relative rounded-2xl overflow-hidden shadow-card">
+        <div className="relative rounded-2xl overflow-hidden shadow-card aspect-square">
           <img
             src={preview}
-            alt="Uploaded preview"
-            className="w-full h-64 object-cover"
+            alt={generatedImageUrl ? "Generated avatar" : "Uploaded preview"}
+            className="w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
           
@@ -130,10 +333,19 @@ export default function ImageUpload({ uploadedImage, onImageUpload, showValidati
           {/* Image info overlay */}
           <div className="absolute bottom-4 left-4 right-4">
             <div className="flex items-center gap-2 text-white">
-              <ImageIcon className="w-5 h-5" />
-              <span className="text-sm font-medium">
-                {uploadedImage?.name || 'Uploaded Image'}
-              </span>
+              {generatedImageUrl ? (
+                <>
+                  <Sparkles className="w-5 h-5" />
+                  <span className="text-sm font-medium">AI Generated Avatar</span>
+                </>
+              ) : (
+                <>
+                  <ImageIcon className="w-5 h-5" />
+                  <span className="text-sm font-medium">
+                    {uploadedImage?.name || 'Uploaded Image'}
+                  </span>
+                </>
+              )}
             </div>
           </div>
         </div>

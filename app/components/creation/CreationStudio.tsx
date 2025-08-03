@@ -16,22 +16,24 @@ type ExpandedPath = 'singer' | 'custom' | 'music' | null
 export default function CreationStudio() {
   const [songTitle, setSongTitle] = useState('')
   const [uploadedImage, setUploadedImage] = useState<File | null>(null)
+  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null)
   const [lyrics, setLyrics] = useState('')
   const [expandedPath, setExpandedPath] = useState<ExpandedPath>(null)
   const [showValidationErrors, setShowValidationErrors] = useState(false)
 
   // Validation logic
   const isFormValid = () => {
+    const hasImage = uploadedImage !== null || generatedImageUrl !== null
     return songTitle.trim() !== '' && 
            lyrics.trim() !== '' && 
-           uploadedImage !== null
+           hasImage
   }
 
   const getValidationMessage = () => {
     const missing: string[] = []
     if (songTitle.trim() === '') missing.push('song title')
     if (lyrics.trim() === '') missing.push('lyrics')
-    if (uploadedImage === null) missing.push('image')
+    if (uploadedImage === null && generatedImageUrl === null) missing.push('image')
     
     if (missing.length === 0) return ''
     if (missing.length === 1) return `Please add a ${missing[0]}`
@@ -116,7 +118,13 @@ export default function CreationStudio() {
                 setShowValidationErrors(false)
               }
             }}
-            showValidation={uploadedImage !== null}
+            onImageGenerated={(imageUrl) => {
+              setGeneratedImageUrl(imageUrl)
+              if (imageUrl && showValidationErrors) {
+                setShowValidationErrors(false)
+              }
+            }}
+            showValidation={uploadedImage !== null || generatedImageUrl !== null}
           />
         </div>
 
@@ -136,7 +144,7 @@ export default function CreationStudio() {
                 setShowValidationErrors(false)
               }
             }}
-            imagePrompt={uploadedImage ? "Create lyrics inspired by the uploaded image" : undefined}
+            imagePrompt={uploadedImage || generatedImageUrl ? "Create lyrics inspired by the image" : undefined}
             showValidation={lyrics.trim() !== ''}
           />
         </div>

@@ -67,13 +67,13 @@ export default function MurekaApiTest() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Mureka API Test Dashboard</h1>
+      <h1 className="text-2xl font-bold mb-6 text-white">🎵 Mureka API Test Dashboard</h1>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         <button
           onClick={testLyricGeneration}
           disabled={loading === 'lyrics'}
-          className="p-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50"
+          className="p-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 transition-colors"
         >
           {loading === 'lyrics' ? 'Testing...' : 'Test Basic Lyrics'}
         </button>
@@ -81,7 +81,7 @@ export default function MurekaApiTest() {
         <button
           onClick={testCustomPrompt}
           disabled={loading === 'customPrompt'}
-          className="p-4 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 disabled:opacity-50"
+          className="p-4 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 disabled:opacity-50 transition-colors"
         >
           {loading === 'customPrompt' ? 'Testing...' : 'Test Emotional Prompt'}
         </button>
@@ -89,7 +89,7 @@ export default function MurekaApiTest() {
         <button
           onClick={testCreativePrompt}
           disabled={loading === 'creativePrompt'}
-          className="p-4 bg-cyan-500 text-white rounded-lg hover:bg-cyan-600 disabled:opacity-50"
+          className="p-4 bg-cyan-500 text-white rounded-lg hover:bg-cyan-600 disabled:opacity-50 transition-colors"
         >
           {loading === 'creativePrompt' ? 'Testing...' : 'Test Creative Prompt'}
         </button>
@@ -97,7 +97,7 @@ export default function MurekaApiTest() {
         <button
           onClick={testGetSingers}
           disabled={loading === 'singers'}
-          className="p-4 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50"
+          className="p-4 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 transition-colors"
         >
           {loading === 'singers' ? 'Testing...' : 'Test Get Singers'}
         </button>
@@ -105,7 +105,7 @@ export default function MurekaApiTest() {
         <button
           onClick={testGetMoodsAndGenres}
           disabled={loading === 'moodsAndGenres'}
-          className="p-4 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:opacity-50"
+          className="p-4 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:opacity-50 transition-colors"
         >
           {loading === 'moodsAndGenres' ? 'Testing...' : 'Test Moods & Genres'}
         </button>
@@ -113,7 +113,7 @@ export default function MurekaApiTest() {
         <button
           onClick={testSongGeneration}
           disabled={loading === 'songGeneration'}
-          className="p-4 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50"
+          className="p-4 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50 transition-colors"
         >
           {loading === 'songGeneration' ? 'Testing...' : 'Test Song Generation'}
         </button>
@@ -122,11 +122,11 @@ export default function MurekaApiTest() {
       {/* Results Display */}
       <div className="space-y-6">
         {Object.entries(results).map(([key, value]) => (
-          <div key={key} className="border rounded-lg p-4">
-            <h3 className="text-lg font-semibold mb-2 capitalize">
+          <div key={key} className="bg-black/30 backdrop-blur-sm border border-white/20 rounded-lg p-4">
+            <h3 className="text-lg font-semibold mb-2 capitalize text-white">
               ✅ {key} Results
             </h3>
-            <pre className="bg-gray-100 p-3 rounded text-sm overflow-auto">
+            <pre className="bg-black/40 p-3 rounded text-sm overflow-auto text-white/80 border border-white/20">
               {JSON.stringify(value, null, 2)}
             </pre>
           </div>
@@ -134,21 +134,21 @@ export default function MurekaApiTest() {
 
         {Object.entries(errors).map(([key, error]) => 
           error ? (
-            <div key={key} className="border border-red-300 rounded-lg p-4 bg-red-50">
-              <h3 className="text-lg font-semibold mb-2 capitalize text-red-700">
+            <div key={key} className="bg-red-500/20 border border-red-500/50 rounded-lg p-4 backdrop-blur-sm">
+              <h3 className="text-lg font-semibold mb-2 capitalize text-red-300">
                 ❌ {key} Error
               </h3>
-              <p className="text-red-600">{String(error)}</p>
+              <p className="text-red-200">{String(error)}</p>
             </div>
           ) : null
         )}
       </div>
 
       {/* API Status */}
-      <div className="mt-8 p-4 bg-gray-50 rounded-lg">
-        <h3 className="font-semibold mb-2">API Configuration</h3>
-        <p><strong>Base URL:</strong> https://api.mureka.ai</p>
-        <p><strong>API Key:</strong> op_mdv80rml6C9Ja67QJEB3Pf32QXKc9b2 (configured)</p>
+      <div className="mt-8 p-4 bg-black/30 backdrop-blur-sm border border-white/20 rounded-lg">
+        <h3 className="font-semibold mb-2 text-white">🔧 API Configuration</h3>
+        <p className="text-white/80"><strong className="text-white">Base URL:</strong> https://api.mureka.ai</p>
+        <p className="text-white/80"><strong className="text-white">API Key:</strong> op_mdv80rml6C9Ja67QJEB3Pf32QXKc9b2 (configured)</p>
       </div>
     </div>
   )
