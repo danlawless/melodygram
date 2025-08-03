@@ -2,13 +2,15 @@
 
 import React, { useState, useEffect } from 'react'
 import { ArrowLeft, Star, Heart, Zap, Loader2, AlertCircle, Search, Filter } from 'lucide-react'
-import { Singer, murekaApiService } from '../../services/murekaApi'
+import { Singer, murekaApiService, SongGenerationResponse } from '../../services/murekaApi'
 
 interface SingerSelectionProps {
   onBack: () => void
+  lyrics?: string
+  title?: string
 }
 
-export default function SingerSelection({ onBack }: SingerSelectionProps) {
+export default function SingerSelection({ onBack, lyrics, title }: SingerSelectionProps) {
   const [selectedSinger, setSelectedSinger] = useState<string | null>(null)
   const [singers, setSingers] = useState<Singer[]>([])
   const [loading, setLoading] = useState(true)
@@ -16,6 +18,10 @@ export default function SingerSelection({ onBack }: SingerSelectionProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [genderFilter, setGenderFilter] = useState<string>('')
   const [showFilters, setShowFilters] = useState(false)
+  
+  // Generation states
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [generationTask, setGenerationTask] = useState<SongGenerationResponse | null>(null)
 
   // Fetch singers on component mount
   useEffect(() => {
@@ -73,6 +79,44 @@ export default function SingerSelection({ onBack }: SingerSelectionProps) {
     }
 
     fetchSingers()
+  }
+
+  const handleGenerateSong = async () => {
+    if (!selectedSinger) return
+    
+    const selectedSingerData = filteredSingers.find(s => s.id === selectedSinger)
+    if (!selectedSingerData) return
+
+    try {
+      setIsGenerating(true)
+      setError(null)
+
+      const params = {
+        lyrics: lyrics || '',
+        title: title || 'My Singer Song',
+        style: 'pop', // Default style
+        mood: 'happy', // Default mood
+        duration: 120, // 2 minutes default
+        vocal_gender: selectedSingerData.gender || 'female',
+        singer_id: selectedSinger
+      }
+
+      const response = await murekaApiService.generateSong(params)
+      setGenerationTask(response)
+      
+      // Poll for completion (simplified)
+      // In a real app, you'd want to implement proper polling or WebSocket updates
+      setTimeout(() => {
+        // Simulate completed generation
+        setGenerationTask(prev => prev ? { ...prev, status: 'completed', songUrl: '/generated/song.mp3' } : null)
+        setIsGenerating(false)
+      }, 3000)
+
+    } catch (err) {
+      console.error('Generation error:', err)
+      setError('Failed to generate song. Please try again.')
+      setIsGenerating(false)
+    }
   }
 
   return (
@@ -287,20 +331,51 @@ export default function SingerSelection({ onBack }: SingerSelectionProps) {
         )}
       </div>
 
-      {/* Continue Button */}
-      {selectedSinger && !loading && (
-        <div className="fixed bottom-0 left-0 right-0 bg-bg-primary/95 backdrop-blur-sm border-t border-border-subtle safe-area-bottom">
-          <div className="px-4 py-6">
-            <button className="btn-primary w-full">
-              <span>Continue with {filteredSingers.find(s => s.id === selectedSinger)?.name}</span>
-              <Zap className="w-5 h-5 ml-2" />
-            </button>
-          </div>
+      {/* Generate Button */}
+      <div className="fixed bottom-20 left-0 right-0 bg-bg-primary/95 backdrop-blur-sm border-t border-border-subtle">
+        <div className="px-4 py-4">
+          <button 
+            onClick={handleGenerateSong}
+            disabled={isGenerating || !selectedSinger || loading}
+            className={`
+              w-full py-4 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2
+              ${isGenerating || !selectedSinger || loading
+                ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                : 'bg-melody-gradient text-white hover:shadow-glow'
+              }
+            `}
+          >
+            {isGenerating ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>Generating Song...</span>
+              </>
+            ) : (
+              <>
+                <span>Generate Song</span>
+                <Zap className="w-5 h-5" />
+              </>
+            )}
+          </button>
+          
+          {/* Generation Status */}
+          {generationTask && (
+            <div className="mt-3 p-3 bg-bg-secondary rounded-lg">
+              <p className="text-sm text-text-secondary">
+                Status: <span className="text-melody-purple capitalize">{generationTask.status}</span>
+              </p>
+              {generationTask.status === 'completed' && generationTask.songUrl && (
+                <p className="text-sm text-green-400 mt-1">
+                  ✅ Your song is ready!
+                </p>
+              )}
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Spacing for fixed button */}
-      {selectedSinger && <div className="h-24"></div>}
+      <div className="h-32"></div>
     </div>
   )
 } 

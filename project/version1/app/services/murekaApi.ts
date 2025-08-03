@@ -69,6 +69,35 @@ export interface Singer {
   previewUrl?: string
 }
 
+// Types for reference tracks and song generation
+export interface ReferenceTrack {
+  id: string
+  title: string
+  genre: string
+  mood: string
+  duration: number
+  description: string
+  previewUrl?: string
+  isPopular?: boolean
+}
+
+export interface SongGenerationParams {
+  lyrics?: string
+  style?: string
+  title?: string
+  referenceTrack?: string
+  mood?: string
+  genre?: string
+  duration?: number
+}
+
+export interface SongGenerationResponse {
+  taskId: string
+  status: 'pending' | 'processing' | 'completed' | 'failed'
+  songUrl?: string
+  message?: string
+}
+
 class MurekaApiService {
   /**
    * Generate lyrics using Mureka API
@@ -241,7 +270,176 @@ class MurekaApiService {
       return []
     }
   }
+
+  /**
+   * Generate a song using Mureka API
+   */
+  async generateSong(params: {
+    lyrics?: string
+    style?: string
+    title?: string
+    referenceTrack?: string
+    mood?: string
+    genre?: string
+    duration?: number
+  }) {
+    try {
+      const response = await murekaApi.post('/v1/song/generate', {
+        ...params,
+        // Add default parameters if not provided
+        duration: params.duration || 120, // 2 minutes default
+        style: params.style || 'pop',
+        mood: params.mood || 'happy'
+      })
+      
+      return response.data
+    } catch (error) {
+      console.error('Error generating song:', error)
+      throw new Error('Failed to generate song. Please try again.')
+    }
+  }
+
+  /**
+   * Query the status of a song generation task
+   */
+  async querySongTask(taskId: string) {
+    try {
+      const response = await murekaApi.get(`/v1/song/task/${taskId}`)
+      return response.data
+    } catch (error) {
+      console.error('Error querying song task:', error)
+      throw new Error('Failed to get song status.')
+    }
+  }
+
+  /**
+   * Get reference tracks for custom generation
+   */
+  async getReferenceTracksAndGenres() {
+    try {
+      const response = await murekaApi.get('/music/moods-and-genres')
+      return {
+        genres: response.data.genres || this.getFallbackGenres(),
+        moods: response.data.moods || this.getFallbackMoods(),
+        referenceTracks: this.getFallbackReferenceTracks()
+      }
+    } catch (error) {
+      console.error('Error fetching reference data:', error)
+      return {
+        genres: this.getFallbackGenres(),
+        moods: this.getFallbackMoods(),
+        referenceTracks: this.getFallbackReferenceTracks()
+      }
+    }
+  }
+
+  /**
+   * Upload a reference track file
+   */
+  async uploadReferenceTrack(file: File) {
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      
+      const response = await murekaApi.post('/files', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      })
+      
+      return response.data
+    } catch (error) {
+      console.error('Error uploading reference track:', error)
+      throw new Error('Failed to upload reference track.')
+    }
+  }
+
+  /**
+   * Get fallback genres if API is unavailable
+   */
+  private getFallbackGenres(): string[] {
+    return [
+      'Pop', 'Rock', 'Jazz', 'Classical', 'Electronic', 'Hip-Hop', 'R&B', 
+      'Country', 'Folk', 'Blues', 'Reggae', 'Alternative', 'Indie', 'Funk'
+    ]
+  }
+
+  /**
+   * Get fallback moods if API is unavailable
+   */
+  private getFallbackMoods(): string[] {
+    return [
+      'Happy', 'Sad', 'Energetic', 'Calm', 'Romantic', 'Melancholic', 
+      'Uplifting', 'Dreamy', 'Intense', 'Chill', 'Mysterious', 'Playful'
+    ]
+  }
+
+  /**
+   * Get fallback reference tracks
+   */
+  private getFallbackReferenceTracks(): ReferenceTrack[] {
+    return [
+      {
+        id: 'ref-1',
+        title: 'Upbeat Pop Anthem',
+        genre: 'Pop',
+        mood: 'Energetic',
+        duration: 180,
+        description: 'Modern pop sound with catchy hooks and uplifting energy',
+        previewUrl: '/audio/ref-pop-anthem.mp3',
+        isPopular: true
+      },
+      {
+        id: 'ref-2', 
+        title: 'Acoustic Ballad',
+        genre: 'Folk',
+        mood: 'Romantic',
+        duration: 210,
+        description: 'Gentle acoustic guitar with emotional storytelling',
+        previewUrl: '/audio/ref-acoustic-ballad.mp3',
+        isPopular: true
+      },
+      {
+        id: 'ref-3',
+        title: 'Electronic Dance',
+        genre: 'Electronic',
+        mood: 'Energetic',
+        duration: 150,
+        description: 'High-energy electronic beats perfect for dancing',
+        previewUrl: '/audio/ref-electronic-dance.mp3'
+      },
+      {
+        id: 'ref-4',
+        title: 'Jazz Standard',
+        genre: 'Jazz',
+        mood: 'Chill',
+        duration: 240,
+        description: 'Smooth jazz with sophisticated harmonies',
+        previewUrl: '/audio/ref-jazz-standard.mp3'
+      },
+      {
+        id: 'ref-5',
+        title: 'Rock Power Ballad',
+        genre: 'Rock',
+        mood: 'Intense',
+        duration: 270,
+        description: 'Powerful rock ballad with soaring melodies',
+        previewUrl: '/audio/ref-rock-ballad.mp3'
+      },
+      {
+        id: 'ref-6',
+        title: 'Hip-Hop Beat',
+        genre: 'Hip-Hop',
+        mood: 'Confident',
+        duration: 165,
+        description: 'Modern hip-hop with strong rhythmic foundation',
+        previewUrl: '/audio/ref-hiphop-beat.mp3'
+      }
+    ]
+  }
 }
+
+
 
 // Export singleton instance
 export const murekaApiService = new MurekaApiService()

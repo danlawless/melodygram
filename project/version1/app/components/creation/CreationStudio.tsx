@@ -6,6 +6,8 @@ import ImageUpload from './ImageUpload'
 import LyricsEditor from './LyricsEditor'
 import PathNavigation from './PathNavigation'
 import SingerSelection from '../singer/SingerSelection'
+import CustomOptions from './CustomOptions'
+import MusicLibrary from './MusicLibrary'
 
 type Screen = 'creation' | 'singer' | 'custom' | 'music'
 
@@ -23,44 +25,46 @@ export default function CreationStudio() {
     setCurrentScreen('creation')
   }
 
+  const handleGenerateSong = async (selectedTrack?: any) => {
+    // TODO: Implement song generation with Mureka API
+    console.log('Generating song with:', {
+      title: songTitle,
+      lyrics,
+      selectedTrack,
+      uploadedImage
+    })
+    
+    // For now, just navigate back to creation
+    handleBackToCreation()
+  }
+
   // Render different screens based on current state
   const renderCurrentScreen = () => {
     switch (currentScreen) {
       case 'singer':
-        return <SingerSelection onBack={handleBackToCreation} />
+        return (
+          <SingerSelection 
+            onBack={handleBackToCreation}
+            lyrics={lyrics}
+            title={songTitle}
+          />
+        )
       case 'custom':
         return (
-          <div className="min-h-screen bg-bg-primary flex flex-col items-center justify-center p-4">
-            <button
-              onClick={handleBackToCreation}
-              className="absolute top-4 left-4 p-3 rounded-full bg-bg-secondary hover:bg-bg-accent transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <div className="text-center space-y-4">
-              <div className="text-6xl mb-4">🎵</div>
-              <h2 className="text-2xl font-bold text-text-primary">Custom Reference</h2>
-              <p className="text-text-secondary">Upload reference tracks & set custom styles</p>
-              <p className="text-text-muted text-sm">Coming soon...</p>
-            </div>
-          </div>
+          <CustomOptions 
+            onBack={handleBackToCreation}
+            lyrics={lyrics}
+            title={songTitle}
+          />
         )
       case 'music':
         return (
-          <div className="min-h-screen bg-bg-primary flex flex-col items-center justify-center p-4">
-            <button
-              onClick={handleBackToCreation}
-              className="absolute top-4 left-4 p-3 rounded-full bg-bg-secondary hover:bg-bg-accent transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <div className="text-center space-y-4">
-              <div className="text-6xl mb-4">🎶</div>
-              <h2 className="text-2xl font-bold text-text-primary">Music Library</h2>
-              <p className="text-text-secondary">Browse our collection of backing tracks</p>
-              <p className="text-text-muted text-sm">Coming soon...</p>
-            </div>
-          </div>
+          <MusicLibrary 
+            onBack={handleBackToCreation}
+            lyrics={lyrics}
+            title={songTitle}
+            onGenerate={handleGenerateSong}
+          />
         )
       default:
         return renderCreationScreen()
@@ -68,10 +72,15 @@ export default function CreationStudio() {
   }
 
   const renderCreationScreen = () => (
-    <div className="min-h-screen bg-bg-primary">
+    <div className="min-h-screen bg-bg-primary pb-24">
       {/* Header with Song Title */}
       <div className="sticky top-0 z-10 bg-bg-primary/95 backdrop-blur-sm border-b border-border-subtle">
         <div className="px-4 py-4">
+          <div className="text-center mb-4">
+            <h1 className="text-xl font-bold text-text-primary">Create Your Song</h1>
+            <p className="text-sm text-text-secondary">Add lyrics and choose your path</p>
+          </div>
+          
           <div className="max-w-md mx-auto">
             <input
               type="text"
