@@ -18,8 +18,8 @@ export interface CreateAvatarRequest {
   audio: string // Audio URL (must be publicly accessible)
   title?: string // Song title for display purposes
   songLength?: number // Song length in seconds for better avatar timing
-  model?: 'V2.5' // Model version
-  resolution?: '256' | '320' | '512' | '640' // Output resolution
+  model?: 'V2.5' // Model version (using V2.5, not V2.7)
+  resolution?: '256' | '320' | '512' // Output resolution (standard resolutions only)
   animation_style?: 'autoselect' | 'face_only' | 'entire_image' // Animation style
   expressiveness?: number // 0-1, higher = more emotion
   crop_head?: boolean // Focus on head region
@@ -69,7 +69,7 @@ class LemonSliceApiService {
         image: request.image,
         audio: request.audio,
         model: request.model || 'V2.5',
-        resolution: request.resolution || '512', 
+        resolution: request.resolution || '320', // Use 320px for faster processing and lower costs 
         animation_style: request.animation_style || 'autoselect',
         expressiveness: request.expressiveness || 0.8,
         crop_head: request.crop_head || false
