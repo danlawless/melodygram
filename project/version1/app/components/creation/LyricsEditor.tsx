@@ -2,23 +2,47 @@
 
 import React, { useState } from 'react'
 import { Sparkles, Loader2 } from 'lucide-react'
+import { murekaApiService } from '../../services/murekaApi'
 
 interface LyricsEditorProps {
   lyrics: string
   onLyricsChange: (lyrics: string) => void
+  imagePrompt?: string // Add this to use image context for lyrics generation
 }
 
-export default function LyricsEditor({ lyrics, onLyricsChange }: LyricsEditorProps) {
+export default function LyricsEditor({ lyrics, onLyricsChange, imagePrompt }: LyricsEditorProps) {
   const [isGenerating, setIsGenerating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const handleGenerateLyrics = async () => {
     setIsGenerating(true)
+    setError(null)
     
-    // Simulate AI generation - replace with actual API call
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      // Create a prompt based on image context or use a default
+      const prompt = imagePrompt 
+        ? `Create song lyrics inspired by this image description: ${imagePrompt}. Make it emotional and meaningful.`
+        : 'Create beautiful song lyrics about love, life, and meaningful moments. Include verse and chorus structure.'
+
+      const response = await murekaApiService.generateLyrics({
+        prompt,
+        style: 'pop',
+        mood: 'uplifting',
+        language: 'english'
+      })
       
-      const generatedLyrics = `Verse 1:
+      // Format the lyrics with title if provided
+      const formattedLyrics = response.title 
+        ? `Title: ${response.title}\n\n${response.lyrics}`
+        : response.lyrics
+
+      onLyricsChange(formattedLyrics)
+    } catch (error) {
+      console.error('Error generating lyrics:', error)
+      setError('Failed to generate lyrics. Please try again.')
+      
+      // Fallback to demo lyrics if API fails
+      const fallbackLyrics = `Verse 1:
 In the morning light, I see your face
 Dancing shadows in this sacred space
 Every heartbeat tells a story true
@@ -36,9 +60,7 @@ Harmonies that only we could know
 Through the music, our souls collide
 In this moment, we're alive`
 
-      onLyricsChange(generatedLyrics)
-    } catch (error) {
-      console.error('Error generating lyrics:', error)
+      onLyricsChange(fallbackLyrics)
     } finally {
       setIsGenerating(false)
     }
@@ -71,6 +93,13 @@ In this moment, we're alive`
           )}
         </button>
       </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+          <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
+        </div>
+      )}
 
       {/* Lyrics Textarea */}
       <div className="relative">

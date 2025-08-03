@@ -99,6 +99,7 @@ export default function CreationStudio() {
           <LyricsEditor 
             lyrics={lyrics}
             onLyricsChange={setLyrics}
+            imagePrompt={uploadedImage ? "Create lyrics inspired by the uploaded image" : undefined}
           />
         </div>
 

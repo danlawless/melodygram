@@ -1,79 +1,158 @@
-# 🎵 MelodyGram v1 - Beautiful Music Creation App
+# Melodygram v1 - AI Music Creation App
 
-**Transform your photos into personalized singing avatars with AI magic ✨**
+A beautiful mobile-first music creation app that integrates with the Mureka API to provide AI-powered vocal synthesis and music generation.
 
-![MelodyGram](../../wireframe/melody-gram-wireframe.png)
+## 🎵 Features
 
-## 🌟 What We've Built
-
-### ✅ **MAIN APP - Creation Studio** (COMPLETED)
-Following your wireframe perfectly, we've created a stunning mobile-first Creation Studio with:
-
-#### 🎨 **Beautiful Dark Theme Design**
-- Music-inspired purple/pink gradient colors (`#8b5cf6` to `#ec4899`)
-- Elegant glass-effect components with subtle shadows
-- Smooth animations and micro-interactions
-- Perfect mobile-first responsive design
-
-#### 📱 **Core Components** 
-1. **Song Title Input** - Clean header with title input field
-2. **Image Upload Area** - Gorgeous drag-and-drop zone with preview functionality
-3. **Lyrics Editor** - Large textarea with AI Generate button (exactly as wireframed!)
-4. **Path Navigation** - Three beautiful circular buttons (🎤 Singer, 🎵 Custom, 🎶 Music)
-
-#### ✨ **Key Features**
-- **AI Lyrics Generation** - Click "Generate" to create beautiful sample lyrics
-- **Drag & Drop Upload** - Intuitive photo upload with preview
-- **Mobile-Optimized** - Perfect touch targets and thumb-friendly navigation
-- **Smooth Animations** - Entrance animations and hover effects
-- **Character Counter** - Real-time feedback with color changes
-- **Haptic Feedback** - Native mobile vibrations on interactions
+- **AI Singer Selection**: Browse and select from Mureka's extensive library of AI-powered vocal voices
+- **Real-time API Integration**: Dynamically fetches singers and their details from Mureka API
+- **Advanced Search & Filtering**: Search singers by name, style, or description with gender filtering
+- **Responsive Design**: Mobile-first UI optimized for all devices
+- **Loading States & Error Handling**: Robust error handling with fallback data
+- **Modern UI/UX**: Beautiful gradient designs with smooth animations
 
 ## 🚀 Getting Started
 
-```bash
-cd project/version1
-npm install
-npm run dev
-```
+### Prerequisites
 
-Open [http://localhost:3000](http://localhost:3000) to see the magic! 🎭
+- Node.js (v16 or higher)
+- npm or yarn
+- Mureka API account (optional - fallback data available)
 
-## 🎯 What's Next
+### Installation
 
-### 📋 **Remaining Sections to Build:**
+1. **Clone and navigate to the project:**
+   ```bash
+   cd project/version1
+   ```
 
-1. **🎤 Singer Selection Screen** - Beautiful avatar grid for AI vocalists
-2. **🎵 Custom Options Screen** - Reference tracks and customization
-3. **🎶 Music Library Screen** - Browse and play music cards  
-4. **👤 Profile/Settings** - User management (MY SECTION from wireframe)
-5. **🎬 Playback View** - Full-screen singing avatar player
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
 
-## 💫 Design Philosophy
+3. **Configure environment variables (optional):**
+   ```bash
+   # Copy the example env file
+   cp .env.example .env.local
+   ```
+   
+   Edit `.env.local` with your Mureka API credentials:
+   ```env
+   NEXT_PUBLIC_MUREKA_API_BASE_URL=https://useapi.net
+   MUREKA_API_TOKEN=your_api_token_here
+   MUREKA_ACCOUNT_ID=your_account_id_here
+   ```
 
-We're following your vision of creating something "absolutely stunning" - every pixel is crafted to feel:
-- **Professional yet Playful** - Sophisticated but accessible to everyone
-- **Inspiring Creativity** - The interface itself sparks ideas
-- **Memorable & Shareable** - Beautiful enough to screenshot and share
-- **Grandma-Friendly** - Intuitive enough for any age to use
+4. **Start the development server:**
+   ```bash
+   npm run dev
+   ```
 
-## 🛠️ Tech Stack
+5. **Open your browser:**
+   Navigate to `http://localhost:3000` to see the application.
 
-- **Next.js 14** - React framework with App Router
-- **TypeScript** - Type-safe development
-- **Tailwind CSS** - Utility-first styling with custom theme
-- **Lucide React** - Beautiful iconography
-- **Framer Motion** - Smooth animations (ready to use)
+## 🔧 Mureka API Integration
+
+### Setting Up Mureka API
+
+To get real-time singer data from Mureka, you'll need to:
+
+1. **Create a Mureka account** at [mureka.ai](https://mureka.ai)
+2. **Get your API credentials** following [this guide](https://useapi.net/docs/start-here/setup-mureka)
+3. **Configure your environment variables** as shown above
+
+### API Features Used
+
+- **`GET /music/vocals`**: Fetches all available AI singers/voices
+- **`GET /music/moods-and-genres`**: Gets available moods and genres
+- **Search functionality**: Client-side filtering of vocal data
+
+### Fallback Behavior
+
+If API credentials are not provided or the API is unavailable, the app will:
+- Display a curated list of sample singers
+- Show all core functionality with mock data
+- Provide the same user experience
+
+## 📱 Usage
+
+### Singer Selection
+
+1. **Browse Singers**: View all available AI voices with their details
+2. **Search**: Use the search bar to find singers by name, style, or genre
+3. **Filter**: Apply filters by gender or voice characteristics
+4. **Select**: Choose your preferred singer and continue to the next step
+
+### Key Components
+
+- **`SingerSelection`**: Main component for singer browsing and selection
+- **`murekaApiService`**: Service layer for Mureka API integration
+- **Error Boundaries**: Graceful error handling throughout the app
+
+## 🛠 Tech Stack
+
+- **Framework**: Next.js 14 with App Router
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **Icons**: Lucide React
+- **HTTP Client**: Axios
+- **API Integration**: Mureka AI Platform
 
 ## 🎨 Design System
 
-Our custom Tailwind theme includes:
-- **Dark Theme Colors**: Deep blacks with purple/pink accents
-- **Beautiful Gradients**: Music-inspired color flows
-- **Smart Animations**: Entrance effects and micro-interactions
-- **Mobile-First**: Touch-optimized components
-- **Glass Effects**: Modern backdrop blur styling
+The app uses a custom design system with:
+
+- **Color Palette**: Purple and pink gradients with dark/light themes
+- **Typography**: Clean, modern font hierarchy
+- **Components**: Reusable UI components with consistent styling
+- **Animations**: Smooth transitions and micro-interactions
+
+## 🔄 Development
+
+### Available Scripts
+
+- `npm run dev`: Start development server
+- `npm run build`: Build for production
+- `npm run start`: Start production server
+- `npm run lint`: Run ESLint
+
+### Project Structure
+
+```
+project/version1/
+├── app/
+│   ├── components/
+│   │   ├── singer/
+│   │   │   └── SingerSelection.tsx    # Main singer selection component
+│   │   └── creation/                  # Other creation components
+│   ├── services/
+│   │   └── murekaApi.ts              # Mureka API service layer
+│   ├── globals.css                   # Global styles
+│   ├── layout.tsx                    # App layout
+│   └── page.tsx                      # Home page
+├── package.json                      # Dependencies and scripts
+└── README.md                         # This file
+```
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🙏 Acknowledgments
+
+- [Mureka AI](https://mureka.ai) for providing the AI music generation API
+- [Lucide](https://lucide.dev) for beautiful icons
+- [Tailwind CSS](https://tailwindcss.com) for styling utilities
 
 ---
 
-**Ready to continue building your dream music creation experience! 🚀** 
+**Note**: This is a v1 implementation focusing on the singer selection feature. Additional music creation features will be added in future versions. 
