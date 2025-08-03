@@ -1,32 +1,28 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
+import { Sparkles, Loader2, RefreshCw } from 'lucide-react'
 import TipButton from '../ui/TipButton'
 import { titleGenerationService } from '../../services/titleGeneration'
 
 interface TitleInputProps {
   title: string
   onTitleChange: (title: string) => void
-  showValidation?: boolean
-  showError?: boolean
   lyrics?: string
-  style?: string
-  mood?: string
-  genre?: string
+  selectedGender?: string
+  showValidation?: boolean
+  isAutoGenerating?: boolean
 }
 
 export default function TitleInput({ 
   title, 
   onTitleChange, 
-  showValidation = false, 
-  showError = false, 
-  lyrics, 
-  style, 
-  mood, 
-  genre 
+  lyrics = '',
+  selectedGender,
+  showValidation = false,
+  isAutoGenerating = false
 }: TitleInputProps) {
   const [isGenerating, setIsGenerating] = useState(false)
-  const [generationSource, setGenerationSource] = useState<'mureka' | 'openai' | null>(null)
 
   const handleRegenerateTitle = async () => {
     if (!lyrics || lyrics.trim().length < 10) {
@@ -35,22 +31,27 @@ export default function TitleInput({
     }
 
     setIsGenerating(true)
-    setGenerationSource(null)
 
     try {
+      console.log('🔄 Regenerating title, current:', title)
       const result = await titleGenerationService.generateTitle({
         lyrics,
-        currentTitle: title,
-        style,
-        mood,
-        genre
+        currentTitle: title, // Pass current title so AI avoids repeating it
+        style: 'pop',
+        mood: 'upbeat',
+        selectedGender
       })
       
-      onTitleChange(result.title)
-      setGenerationSource(result.source)
+      console.log('✨ New title generated:', result.title)
       
-      // Show a brief success indication
-      setTimeout(() => setGenerationSource(null), 3000)
+      // Safety check: if generated title is the same as current, add variation
+      let finalTitle = result.title
+      if (finalTitle.toLowerCase() === title.toLowerCase()) {
+        finalTitle = `${result.title} (v2)`
+        console.log('⚠️ Generated title was same as current, adding variation:', finalTitle)
+      }
+      
+      onTitleChange(finalTitle)
     } catch (error) {
       console.error('Title generation failed:', error)
       alert(error instanceof Error ? error.message : 'Failed to generate title. Please try again.')
@@ -59,23 +60,34 @@ export default function TitleInput({
     }
   }
 
+  const canRegenerate = lyrics && lyrics.trim().length >= 10 && !isAutoGenerating && !isGenerating
+
   return (
     <div className="space-y-4">
-      {/* Header with Validation */}
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <h2 className="text-xl font-semibold text-text-primary">Title</h2>
+        <div className="flex items-center space-x-2">
+          <h2 className="text-xl font-semibold text-text-primary">Song Title</h2>
+          {showValidation && title.trim() !== '' && (
+            <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+              <span className="text-white text-xs">✓</span>
+            </div>
+          )}
           <TipButton
-            title="Crafting Your Song Title"
-            content="A great song title captures the essence of your lyrics and draws listeners in. Keep it memorable, emotional, and true to your song's message."
-            position="right"
-            size="sm"
+            title="Song Title Tips"
+            content="A great song title captures the essence of your lyrics in 1-5 words. It should be memorable, emotional, and give listeners a hint about the song's theme."
           />
         </div>
-        {showValidation && title.trim() !== '' && (
-          <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-            <span className="text-white text-xs">✓</span>
-          </div>
+
+        {/* Regenerate button - only show when lyrics exist */}
+        {canRegenerate && (
+          <button
+            onClick={handleRegenerateTitle}
+            className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 text-white text-sm font-medium hover:opacity-90 transition-opacity"
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>Generate</span>
+          </button>
         )}
       </div>
 
@@ -85,55 +97,40 @@ export default function TitleInput({
           type="text"
           value={title}
           onChange={(e) => onTitleChange(e.target.value)}
-          placeholder="Enter your song title..."
-          className={`w-full p-4 pr-20 bg-bg-primary border rounded-xl text-text-primary placeholder-text-secondary focus:ring-2 focus:ring-melody-purple/20 focus:border-melody-purple transition-colors text-lg font-medium ${
-            showValidation && title.trim() !== ''
-              ? 'border-green-500 bg-bg-primary'
-              : showError && title.trim() === ''
-                ? 'border-red-300 bg-bg-primary'
-                : 'border-border-subtle'
-          }`}
+          placeholder={lyrics && lyrics.trim().length >= 10 
+            ? "Enter title or click Generate to create from lyrics..." 
+            : "Enter your song title..."
+          }
+          className="w-full p-4 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all"
+          style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
         />
         
-        {/* Regenerate Button */}
-        <button
-          onClick={handleRegenerateTitle}
-          disabled={isGenerating || !lyrics || lyrics.trim().length < 10}
-          className={`absolute right-12 top-1/2 -translate-y-1/2 p-2 rounded-lg transition-all duration-200 ${
-            isGenerating 
-              ? 'bg-melody-purple/20 text-melody-purple cursor-not-allowed' 
-              : !lyrics || lyrics.trim().length < 10
-                ? 'bg-bg-secondary text-text-secondary cursor-not-allowed'
-                : 'bg-melody-purple/10 text-melody-purple hover:bg-melody-purple/20 hover:scale-105 active:scale-95'
-          }`}
-          title={!lyrics || lyrics.trim().length < 10 ? 'Write some lyrics first' : 'Generate new title from lyrics'}
-        >
-          {isGenerating ? (
-            <div className="w-4 h-4 animate-spin rounded-full border-2 border-melody-purple border-t-transparent" />
-          ) : (
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-          )}
-        </button>
-        
-        {/* Character count */}
-        <div className="absolute bottom-3 right-3 text-xs text-text-secondary">
-          {title.length}/100
-        </div>
+        {(isAutoGenerating || isGenerating) && (
+          <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
+            <Loader2 className="w-5 h-5 animate-spin text-purple-400" />
+          </div>
+        )}
       </div>
 
-      {/* Generation source indicator */}
-      {generationSource && (
-        <div className="flex items-center gap-2 text-xs text-green-600 animate-fade-in">
-          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-          <span>Title generated by {generationSource === 'mureka' ? 'Mureka AI' : 'GPT-4o-mini'}</span>
+      {/* Status messages */}
+      {isAutoGenerating && (
+        <div className="flex items-center space-x-2 text-sm text-blue-300">
+          <Sparkles className="w-4 h-4" />
+          <span>Auto-generating title from your lyrics...</span>
         </div>
       )}
-      
-      {/* Validation message */}
-      {showError && title.trim() === '' && (
-        <p className="text-red-600 text-sm">Please enter a song title</p>
+
+      {isGenerating && (
+        <div className="flex items-center space-x-2 text-sm text-purple-300">
+          <RefreshCw className="w-4 h-4 animate-spin" />
+          <span>Generating new title...</span>
+        </div>
+      )}
+
+      {!canRegenerate && lyrics && lyrics.trim().length < 10 && (
+        <div className="text-sm text-gray-500 italic">
+          Write at least 10 characters of lyrics to enable title generation
+        </div>
       )}
     </div>
   )

@@ -12,39 +12,43 @@ const lemonSliceApi = axios.create({
   timeout: 120000, // 2 minutes timeout for video processing
 })
 
-// Types for LemonSlice API
-export interface AvatarCreationRequest {
-  image: string // base64 encoded image or image URL
-  audio: string // audio file URL or base64 encoded audio
-  language?: string // Language code (e.g., 'en', 'es', 'fr')
-  animation?: 'natural' | 'expressive' | 'subtle' // Animation style
-  background?: 'studio' | 'transparent' | 'original' // Background option
-  quality?: 'standard' | 'high' | 'ultra' // Quality setting
+// Types for LemonSlice API (v2)
+export interface CreateAvatarRequest {
+  image: string // Image URL (must be publicly accessible)
+  audio: string // Audio URL (must be publicly accessible)
+  title?: string // Song title for display purposes
+  songLength?: number // Song length in seconds for better avatar timing
+  model?: 'V2.5' // Model version
+  resolution?: '256' | '320' | '512' | '640' // Output resolution
+  animation_style?: 'autoselect' | 'face_only' | 'entire_image' // Animation style
+  expressiveness?: number // 0-1, higher = more emotion
+  crop_head?: boolean // Focus on head region
 }
 
 export interface AvatarCreationResponse {
-  task_id: string
-  status: 'queued' | 'processing' | 'completed' | 'failed'
-  video_url?: string
-  thumbnail_url?: string
-  duration?: number
-  created_at: string
-  completed_at?: string
-  error_message?: string
-  progress?: number // 0-100
+  job_id: string // Job ID for polling
+  status: string // Initial status (usually 'queued' or 'processing')
+  img_url?: string
+  audio_url?: string
+  resolution?: string
+  crop_head?: boolean
+  whole_body_mode?: boolean
+  animation_style?: string
+  expressiveness?: number
+  model?: string
 }
 
 export interface AvatarTaskStatus {
-  task_id: string
-  status: 'queued' | 'processing' | 'completed' | 'failed'
-  progress: number // 0-100
-  video_url?: string
+  job_id: string
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'error'
+  progress?: number // 0-100
+  video_url?: string // Available when completed
   thumbnail_url?: string
   duration?: number
-  created_at: string
-  completed_at?: string
+  created_at?: number
+  completed_at?: number
   error_message?: string
-  estimated_completion?: string
+  failure_reason?: string
 }
 
 export interface AvatarPreset {
@@ -57,17 +61,18 @@ export interface AvatarPreset {
 
 class LemonSliceApiService {
   /**
-   * Create a talking avatar from image and audio
+   * Create a talking avatar from image and audio URLs
    */
-  async createAvatar(request: AvatarCreationRequest): Promise<AvatarCreationResponse> {
+  async createAvatar(request: CreateAvatarRequest): Promise<AvatarCreationResponse> {
     try {
       const response = await lemonSliceApi.post<AvatarCreationResponse>('/avatar/create', {
         image: request.image,
         audio: request.audio,
-        language: request.language || 'en',
-        animation: request.animation || 'natural',
-        background: request.background || 'studio',
-        quality: request.quality || 'high'
+        model: request.model || 'V2.5',
+        resolution: request.resolution || '512', 
+        animation_style: request.animation_style || 'autoselect',
+        expressiveness: request.expressiveness || 0.8,
+        crop_head: request.crop_head || false
       })
       
       return response.data
@@ -82,37 +87,43 @@ class LemonSliceApiService {
   }
 
   /**
-   * Query the status of an avatar creation task
+   * Query the status of an avatar creation job
    */
-  async getTaskStatus(taskId: string): Promise<AvatarTaskStatus> {
+  async getTaskStatus(jobId: string): Promise<AvatarTaskStatus> {
     try {
-      const response = await lemonSliceApi.get<AvatarTaskStatus>(`/avatar/task/${taskId}`)
+      const response = await lemonSliceApi.get<AvatarTaskStatus>(`/avatar/task/${jobId}`)
       return response.data
     } catch (error) {
-      console.error('Error fetching avatar task status:', error)
+      console.error('Error fetching avatar job status:', error)
       if (axios.isAxiosError(error)) {
         const errorMessage = error.response?.data?.message || error.message
-        throw new Error(`Failed to get task status: ${errorMessage}`)
+        throw new Error(`Failed to get job status: ${errorMessage}`)
       }
-      throw new Error('Failed to get task status. Please try again.')
+      throw new Error('Failed to get job status. Please try again.')
     }
   }
 
   /**
-   * Poll task status until completion or failure
+   * Wait for task completion with polling and progress updates
    */
   async waitForCompletion(
     taskId: string, 
     onProgress?: (progress: number, status: string) => void,
-    maxWaitTime: number = 300000 // 5 minutes default
+    maxWaitTime: number = 300000 // 5 minutes
   ): Promise<AvatarTaskStatus> {
     const startTime = Date.now()
-    const pollInterval = 3000 // 3 seconds
+    let retryCount = 0
+    const maxRetries = 10 // Allow up to 10 retries for 404s
+    
+    console.log(`🔄 Starting to poll for job completion: ${taskId}`)
 
     return new Promise((resolve, reject) => {
       const poll = async () => {
         try {
           const status = await this.getTaskStatus(taskId)
+          
+          // Reset retry count on successful status fetch
+          retryCount = 0
           
           // Call progress callback if provided
           if (onProgress) {
@@ -121,29 +132,52 @@ class LemonSliceApiService {
 
           // Check if completed or failed
           if (status.status === 'completed') {
+            console.log(`✅ Job ${taskId} completed successfully`)
             resolve(status)
             return
           }
           
           if (status.status === 'failed') {
-            reject(new Error(status.error_message || 'Avatar creation failed'))
+            console.log(`❌ Job ${taskId} failed`)
+            reject(new Error(`Avatar generation failed: ${status.error_message || 'Unknown error'}`))
             return
           }
 
-          // Check timeout
-          if (Date.now() - startTime > maxWaitTime) {
-            reject(new Error('Avatar creation timed out'))
-            return
+          // Continue polling for pending/processing jobs
+          if (Date.now() - startTime < maxWaitTime) {
+            console.log(`🔄 Job ${taskId} still ${status.status}, continuing to poll...`)
+            setTimeout(poll, 2000) // Poll every 2 seconds
+          } else {
+            reject(new Error('Avatar generation timed out'))
           }
 
-          // Continue polling
-          setTimeout(poll, pollInterval)
         } catch (error) {
-          reject(error)
+          console.log(`⚠️ Error polling job ${taskId}:`, error)
+          
+          // Handle 404 errors specially - newly created jobs might not be visible immediately
+          if (error instanceof Error && error.message.includes('404')) {
+            retryCount++
+            console.log(`🔄 Job ${taskId} not found (attempt ${retryCount}/${maxRetries}), retrying...`)
+            
+            if (retryCount <= maxRetries && Date.now() - startTime < maxWaitTime) {
+              // Use exponential backoff for retries: 2s, 4s, 6s, 8s, etc.
+              const delay = Math.min(2000 + (retryCount * 2000), 10000)
+              setTimeout(poll, delay)
+              return
+            }
+          }
+          
+          // If we've exhausted retries or it's not a 404, fail
+          if (retryCount > maxRetries) {
+            reject(new Error(`Job ${taskId} not found after ${maxRetries} attempts. It may have been created but not yet visible in the API.`))
+          } else {
+            reject(error)
+          }
         }
       }
 
-      poll()
+      // Start polling with a small initial delay to give the job time to appear in the API
+      setTimeout(poll, 3000) // Wait 3 seconds before first poll
     })
   }
 
@@ -204,7 +238,7 @@ class LemonSliceApiService {
   async createAvatarFromFiles(
     imageFile: File,
     audioUrl: string,
-    options?: Partial<AvatarCreationRequest>
+    options?: Partial<CreateAvatarRequest>
   ): Promise<AvatarCreationResponse> {
     try {
       // Handle image - try upload first, fallback to base64

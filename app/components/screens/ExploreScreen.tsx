@@ -42,23 +42,49 @@ export default function ExploreScreen() {
   ]
 
   return (
-    <div className="min-h-screen bg-bg-primary pb-24">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-bg-primary/95 backdrop-blur-sm border-b border-border-subtle">
-        <div className="p-4">
-          <div className="flex items-center gap-3 mb-4">
-            <Compass className="w-6 h-6 text-melody-purple" />
-            <h1 className="text-2xl font-bold text-text-primary">Explore</h1>
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900 pb-24">
+      {/* Elegant Header */}
+      <div className="sticky top-0 z-10 bg-black/80 backdrop-blur-xl border-b border-white/10">
+        <div className="p-6">
+          {/* Title Section */}
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-r from-blue-500 to-cyan-500 flex items-center justify-center">
+                <Compass className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-white">Explore</h1>
+                <p className="text-gray-400">Discover amazing AI-generated music</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Stats Cards */}
+          <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="bg-gradient-to-r from-blue-500/20 to-cyan-500/20 backdrop-blur-sm border border-blue-500/30 rounded-2xl p-4 text-center">
+              <div className="text-3xl font-bold text-blue-400 mb-1">1.2K</div>
+              <div className="text-sm text-blue-300">Songs</div>
+            </div>
+            <div className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 backdrop-blur-sm border border-green-500/30 rounded-2xl p-4 text-center">
+              <div className="text-3xl font-bold text-green-400 mb-1">350</div>
+              <div className="text-sm text-green-300">Artists</div>
+            </div>
+            <div className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-sm border border-purple-500/30 rounded-2xl p-4 text-center">
+              <div className="text-3xl font-bold text-purple-400 mb-1">24</div>
+              <div className="text-sm text-purple-300">Genres</div>
+            </div>
           </div>
           
           {/* Search Bar */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-text-secondary" />
-            <input
-              type="text"
-              placeholder="Search songs, artists, genres..."
-              className="w-full pl-10 pr-4 py-3 bg-bg-secondary rounded-xl border border-border-subtle focus:border-melody-purple focus:ring-2 focus:ring-melody-purple/20 focus:outline-none text-text-primary placeholder-text-secondary"
-            />
+          <div className="flex items-center gap-4 mb-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search songs, artists, genres..."
+                className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
           </div>
         </div>
       </div>

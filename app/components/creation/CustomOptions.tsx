@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useState } from 'react'
-import { ArrowLeft, Loader2, AlertCircle, Zap, X, Shuffle } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { ArrowLeft, Loader2, AlertCircle, Zap, X, Shuffle, RefreshCw } from 'lucide-react'
 import { murekaApiService, SongGenerationResponse } from '../../services/murekaApi'
 import TipButton from '../ui/TipButton'
 
@@ -30,7 +30,8 @@ interface VocalOption {
   value: string
 }
 
-const styleOptions: StyleOption[] = [
+// Fallback data in case API fails
+const fallbackStyleOptions: StyleOption[] = [
   { id: 'random', name: 'Random', image: '🎲', color: 'bg-gray-600' },
   { id: 'pop', name: 'pop', image: '🎤', color: 'bg-gradient-to-br from-pink-400 to-purple-500' },
   { id: 'r&b', name: 'r&b', image: '🎵', color: 'bg-gradient-to-br from-teal-400 to-cyan-500' },
@@ -41,7 +42,7 @@ const styleOptions: StyleOption[] = [
   { id: 'hip-hop', name: 'hip-hop', image: '🎤', color: 'bg-gradient-to-br from-green-400 to-blue-500' }
 ]
 
-const moodOptions: MoodOption[] = [
+const fallbackMoodOptions: MoodOption[] = [
   { id: 'random', name: 'Random', color: 'bg-gray-600' },
   { id: 'relaxed', name: 'relaxed', color: 'bg-teal-500' },
   { id: 'angry', name: 'angry', color: 'bg-red-500' },
@@ -57,7 +58,52 @@ const vocalOptions: VocalOption[] = [
   { id: 'male', name: 'male vocal', value: 'male' }
 ]
 
+// Helper function to generate style option with visual elements
+const createStyleOption = (genre: string, index: number): StyleOption => {
+  const emojis = ['🎤', '🎸', '🎺', '🎧', '🎵', '🥁', '🎹', '🎪', '🎭', '🌟']
+  const colors = [
+    'bg-gradient-to-br from-pink-400 to-purple-500',
+    'bg-gradient-to-br from-orange-400 to-red-500', 
+    'bg-gradient-to-br from-yellow-400 to-orange-500',
+    'bg-gradient-to-br from-blue-400 to-purple-500',
+    'bg-gradient-to-br from-teal-400 to-cyan-500',
+    'bg-gradient-to-br from-green-400 to-blue-500',
+    'bg-gradient-to-br from-purple-400 to-pink-500',
+    'bg-gradient-to-br from-indigo-400 to-purple-500',
+    'bg-gradient-to-br from-rose-400 to-pink-500',
+    'bg-gradient-to-br from-emerald-400 to-teal-500'
+  ]
+  
+  return {
+    id: genre.toLowerCase(),
+    name: genre.toLowerCase(),
+    image: emojis[index % emojis.length],
+    color: colors[index % colors.length]
+  }
+}
+
+// Helper function to create mood option with colors
+const createMoodOption = (mood: string, index: number): MoodOption => {
+  const colors = [
+    'bg-teal-500', 'bg-red-500', 'bg-yellow-500', 'bg-orange-500',
+    'bg-blue-500', 'bg-pink-500', 'bg-purple-500', 'bg-green-500',
+    'bg-indigo-500', 'bg-rose-500', 'bg-cyan-500', 'bg-emerald-500'
+  ]
+  
+  return {
+    id: mood.toLowerCase(),
+    name: mood.toLowerCase(),
+    color: colors[index % colors.length]
+  }
+}
+
 export default function CustomOptions({ lyrics, title, isInlineMode = false }: CustomOptionsProps) {
+  // API Data states
+  const [styleOptions, setStyleOptions] = useState<StyleOption[]>(fallbackStyleOptions)
+  const [moodOptions, setMoodOptions] = useState<MoodOption[]>(fallbackMoodOptions)
+  const [loadingOptions, setLoadingOptions] = useState(false)
+  const [optionsError, setOptionsError] = useState<string | null>(null)
+  
   // Selection states
   const [selectedStyle, setSelectedStyle] = useState<string>('')
   const [selectedMood, setSelectedMood] = useState<string>('')
@@ -67,6 +113,45 @@ export default function CustomOptions({ lyrics, title, isInlineMode = false }: C
   const [isGenerating, setIsGenerating] = useState(false)
   const [generationTask, setGenerationTask] = useState<SongGenerationResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  // Load options from Mureka API on component mount
+  useEffect(() => {
+    loadOptionsFromAPI()
+  }, [])
+
+  const loadOptionsFromAPI = async () => {
+    try {
+      setLoadingOptions(true)
+      setOptionsError(null)
+      
+      const data = await murekaApiService.getReferenceTracksAndGenres()
+      
+      // Transform API genres to style options
+      if (data.genres && data.genres.length > 0) {
+        const randomOption: StyleOption = { id: 'random', name: 'Random', image: '🎲', color: 'bg-gray-600' }
+        const apiStyleOptions = data.genres.map((genre, index) => createStyleOption(genre, index))
+        setStyleOptions([randomOption, ...apiStyleOptions])
+      }
+      
+      // Transform API moods to mood options
+      if (data.moods && data.moods.length > 0) {
+        const randomOption: MoodOption = { id: 'random', name: 'Random', color: 'bg-gray-600' }
+        const apiMoodOptions = data.moods.map((mood, index) => createMoodOption(mood, index))
+        setMoodOptions([randomOption, ...apiMoodOptions])
+      }
+      
+    } catch (err) {
+      console.error('Error loading options from API:', err)
+      setOptionsError('Failed to load latest options from Mureka API. Using default options.')
+      // Keep fallback options that were set in useState
+    } finally {
+      setLoadingOptions(false)
+    }
+  }
+
+  const handleRefreshOptions = () => {
+    loadOptionsFromAPI()
+  }
 
   const handleStyleSelect = (styleId: string) => {
     setSelectedStyle(styleId)
@@ -147,7 +232,7 @@ export default function CustomOptions({ lyrics, title, isInlineMode = false }: C
     <div className={isInlineMode ? "bg-bg-secondary rounded-2xl shadow-card" : "min-h-screen bg-bg-primary"}>
       {/* Header */}
       <div className={isInlineMode ? "px-6 py-4 border-b border-border-subtle" : "sticky top-0 z-10 bg-bg-primary/95 backdrop-blur-sm border-b border-border-subtle"}>
-        <div className="flex items-center justify-center p-4">
+        <div className="flex items-center justify-between p-4">
           <div className="flex-1 text-center">
             <div className="flex items-center justify-center gap-2 mb-1">
               <h1 className="text-xl font-bold text-text-primary">Choose a Style</h1>
@@ -161,14 +246,42 @@ export default function CustomOptions({ lyrics, title, isInlineMode = false }: C
               {title && `"${title}" • `}{getSelectedOptionsText()}
             </p>
           </div>
+          
+          {/* Refresh Button */}
+          <button
+            onClick={handleRefreshOptions}
+            disabled={loadingOptions}
+            className="p-3 rounded-full bg-bg-secondary hover:bg-bg-accent transition-colors touch-target"
+          >
+            <RefreshCw className={`w-5 h-5 text-text-primary ${loadingOptions ? 'animate-spin' : ''}`} />
+          </button>
         </div>
+
+        {/* API Status */}
+        {optionsError && (
+          <div className="mx-4 mb-2 p-3 bg-yellow-500/20 border border-yellow-500/50 rounded-lg">
+            <p className="text-yellow-400 text-sm">{optionsError}</p>
+          </div>
+        )}
+        
+        {loadingOptions && (
+          <div className="mx-4 mb-2 p-3 bg-melody-purple/20 border border-melody-purple/50 rounded-lg">
+            <div className="flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin text-melody-purple" />
+              <p className="text-melody-purple text-sm">Loading latest options from Mureka API...</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Content */}
       <div className="px-4 py-6 space-y-8">
         {/* Select Style */}
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-text-primary">Select Style</h3>
+          <h3 className="text-lg font-semibold text-text-primary">
+            Select Style 
+            <span className="text-sm text-text-secondary ml-2">({styleOptions.length} available)</span>
+          </h3>
           <div className="grid grid-cols-4 gap-3">
             {styleOptions.map((style) => (
               <button
@@ -192,7 +305,10 @@ export default function CustomOptions({ lyrics, title, isInlineMode = false }: C
 
         {/* Select Mood */}
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-text-primary">Select Mood</h3>
+          <h3 className="text-lg font-semibold text-text-primary">
+            Select Mood
+            <span className="text-sm text-text-secondary ml-2">({moodOptions.length} available)</span>
+          </h3> 
           <div className="grid grid-cols-4 gap-3">
             {moodOptions.map((mood) => (
               <button

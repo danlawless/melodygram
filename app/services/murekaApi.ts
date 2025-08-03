@@ -91,10 +91,28 @@ export interface SongGenerationParams {
 }
 
 export interface SongGenerationResponse {
-  taskId: string
-  status: 'pending' | 'processing' | 'completed' | 'failed'
+  id: string
+  created_at: number
+  model: string
+  status: 'preparing' | 'processing' | 'completed' | 'failed' | 'error'
+  trace_id: string
   songUrl?: string
+  audio_url?: string
   message?: string
+}
+
+interface SongGenerationOptions {
+  lyrics: string
+  gender?: 'male' | 'female'
+  lengthInSeconds?: number // New: Target song duration
+}
+
+interface SongGenerationResult {
+  audioUrl: string
+  hasFlac: boolean
+  hasLyricsData: boolean
+  duration?: number
+  actualDuration?: number // Actual duration returned by Mureka
 }
 
 class MurekaApiService {
@@ -271,22 +289,23 @@ class MurekaApiService {
   }
 
   /**
-   * Generate a song using Mureka API
+   * Generate a song using Mureka API with length control
    */
   async generateSong(params: {
-    lyrics?: string
-    style?: string
+    lyrics: string
     title?: string
-    referenceTrack?: string
+    style?: string
     mood?: string
-    genre?: string
     duration?: number
+    vocal_gender?: string
   }) {
     try {
+      console.log(`🎵 Starting Mureka song generation (target: ${params.duration || 'auto'}s)`)
+
       const response = await murekaApi.post('/v1/song/generate', {
         ...params,
         // Add default parameters if not provided
-        duration: params.duration || 120, // 2 minutes default
+        duration: params.duration || 120, // Use provided duration or 2 minutes default
         style: params.style || 'pop',
         mood: params.mood || 'happy'
       })
@@ -303,7 +322,7 @@ class MurekaApiService {
    */
   async querySongTask(taskId: string) {
     try {
-      const response = await murekaApi.get(`/v1/song/task/${taskId}`)
+      const response = await murekaApi.get(`/v1/song/query/${taskId}`)
       return response.data
     } catch (error) {
       console.error('Error querying song task:', error)
@@ -435,6 +454,23 @@ class MurekaApiService {
         previewUrl: '/audio/ref-hiphop-beat.mp3'
       }
     ]
+  }
+
+  /**
+   * Create duration instruction for Mureka
+   */
+  private createDurationInstruction(seconds: number): string {
+    if (seconds <= 15) {
+      return `IMPORTANT: Generate a VERY SHORT song of exactly ${seconds} seconds. Keep it minimal - just a quick hook or chorus.`
+    } else if (seconds <= 30) {
+      return `IMPORTANT: Generate a SHORT song of exactly ${seconds} seconds. Brief verse and chorus only.`
+    } else if (seconds <= 60) {
+      return `IMPORTANT: Generate a song of exactly ${seconds} seconds (1 minute). Standard verse-chorus structure.`
+    } else if (seconds <= 120) {
+      return `IMPORTANT: Generate a song of exactly ${seconds} seconds (2 minutes). Full structure with verse, chorus, second verse, chorus.`
+    } else {
+      return `IMPORTANT: Generate a song of exactly ${seconds} seconds (${Math.floor(seconds/60)} minutes). Extended structure with multiple verses, choruses, and bridge.`
+    }
   }
 }
 

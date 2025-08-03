@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     if (style) prompt += `Style: ${style}\n`
     if (mood) prompt += `Mood: ${mood}\n`
     if (genre) prompt += `Genre: ${genre}\n`
-    if (currentTitle) prompt += `Current title: "${currentTitle}" (generate something different)\n`
+    if (currentTitle) prompt += `Current title: "${currentTitle}" (IMPORTANT: Generate a completely different title - do NOT repeat or reuse this title)\n`
     
     prompt += `\nRequirements:
 - Maximum 5 words

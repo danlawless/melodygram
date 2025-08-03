@@ -6,6 +6,7 @@ export interface TitleGenerationOptions {
   style?: string
   mood?: string
   genre?: string
+  selectedGender?: string
 }
 
 export interface TitleGenerationResponse {
@@ -17,8 +18,15 @@ class TitleGenerationService {
   // Generate title using Mureka API
   async generateWithMureka(options: TitleGenerationOptions): Promise<string> {
     try {
-      const prompt = `Generate a catchy song title (5 words or less) for these lyrics: "${options.lyrics.slice(0, 500)}..."`
+      let prompt = `Generate a catchy song title (5 words or less) for these lyrics: "${options.lyrics.slice(0, 500)}..." (Generate a NEW title, different from: "${options.currentTitle || 'none'}")`
       
+      // Add gender-specific prompt instructions
+      if (options.selectedGender === 'male') {
+        prompt += ' GENERATE AS MALE, create a title that appeals to masculine themes and perspectives'
+      } else if (options.selectedGender === 'female') {
+        prompt += ' GENERATE AS FEMALE, create a title that appeals to feminine themes and perspectives'
+      }
+
       const response = await murekaApiService.generateLyrics({
         prompt,
         style: options.style,
@@ -26,7 +34,9 @@ class TitleGenerationService {
         genre: options.genre
       })
       
-      return response.title || 'Untitled Song'
+      const title = response.title || 'Untitled Song'
+      // Strip any surrounding quotes that GPT might add
+      return title.replace(/^["']|["']$/g, '')
     } catch (error) {
       console.error('Mureka title generation failed:', error)
       throw error
@@ -46,7 +56,8 @@ class TitleGenerationService {
           currentTitle: options.currentTitle,
           style: options.style,
           mood: options.mood,
-          genre: options.genre
+          genre: options.genre,
+          selectedGender: options.selectedGender
         })
       })
 

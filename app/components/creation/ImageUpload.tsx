@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useState, useCallback } from 'react'
-import { Upload, Image as ImageIcon, X, Sparkles, Loader2 } from 'lucide-react'
+import React, { useState, useCallback, useRef, useEffect } from 'react'
+import { Upload, Image as ImageIcon, X, Sparkles, Loader2, User, Palette, Heart } from 'lucide-react'
 import TipButton from '../ui/TipButton'
 import { imageGenerationService } from '../../services/imageGeneration'
 
@@ -9,10 +9,12 @@ interface ImageUploadProps {
   uploadedImage: File | null
   onImageUpload: (file: File | null) => void
   onImageGenerated?: (imageUrl: string | null) => void
+  generatedImageUrl?: string | null // Add this prop
   showValidation?: boolean
+  selectedGender?: string // Add gender prop for avatar generation
 }
 
-export default function ImageUpload({ uploadedImage, onImageUpload, onImageGenerated, showValidation = false }: ImageUploadProps) {
+export default function ImageUpload({ uploadedImage, onImageUpload, onImageGenerated, generatedImageUrl, showValidation = false, selectedGender }: ImageUploadProps) {
   const [isDragOver, setIsDragOver] = useState(false)
   const [preview, setPreview] = useState<string | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
@@ -21,7 +23,26 @@ export default function ImageUpload({ uploadedImage, onImageUpload, onImageGener
   const [showPromptInput, setShowPromptInput] = useState(false)
   const [selectedStyle, setSelectedStyle] = useState('')
   const [selectedMood, setSelectedMood] = useState('')
-  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null)
+
+  // File input reference
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Sync external props with internal preview state
+  useEffect(() => {
+    if (generatedImageUrl) {
+      setPreview(generatedImageUrl)
+      console.log('🎨 ImageUpload: Set preview from generatedImageUrl prop')
+    } else if (uploadedImage) {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setPreview(e.target?.result as string)  
+        console.log('📸 ImageUpload: Set preview from uploadedImage prop')
+      }
+      reader.readAsDataURL(uploadedImage)
+    } else {
+      setPreview(null)
+    }
+  }, [uploadedImage, generatedImageUrl])
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -32,7 +53,6 @@ export default function ImageUpload({ uploadedImage, onImageUpload, onImageGener
       const file = files[0]
       if (file.type.startsWith('image/')) {
         onImageUpload(file)
-        setGeneratedImageUrl(null) // Clear any generated image when uploading new file
         // Notify parent that generated image was cleared
         if (onImageGenerated) {
           onImageGenerated(null)
@@ -49,7 +69,6 @@ export default function ImageUpload({ uploadedImage, onImageUpload, onImageGener
     const file = e.target.files?.[0]
     if (file) {
       onImageUpload(file)
-      setGeneratedImageUrl(null) // Clear any generated image when uploading new file
       // Notify parent that generated image was cleared
       if (onImageGenerated) {
         onImageGenerated(null)
@@ -64,7 +83,6 @@ export default function ImageUpload({ uploadedImage, onImageUpload, onImageGener
   const removeImage = () => {
     onImageUpload(null)
     setPreview(null)
-    setGeneratedImageUrl(null)
     // Notify parent that generated image was cleared
     if (onImageGenerated) {
       onImageGenerated(null)
@@ -74,7 +92,6 @@ export default function ImageUpload({ uploadedImage, onImageUpload, onImageGener
   const handleGenerateAvatar = async () => {
     setIsGenerating(true)
     setError(null)
-    setGeneratedImageUrl(null)
     
     try {
       // Create a prompt based on custom input or use a default avatar prompt
@@ -84,8 +101,16 @@ export default function ImageUpload({ uploadedImage, onImageUpload, onImageGener
         prompt = 'A professional headshot portrait of a friendly person with a warm smile, photorealistic, studio lighting, high quality'
       }
 
+      // Add gender specification to the prompt if selected
+      let genderPrompt = ''
+      if (selectedGender === 'male') {
+        genderPrompt = ', GENERATE MALE AVATAR'
+      } else if (selectedGender === 'female') {
+        genderPrompt = ', GENERATE FEMALE AVATAR'
+      }
+
       const response = await imageGenerationService.generateImage({
-        prompt: `${prompt}, portrait photography style, clear facial features, suitable for avatar use`,
+        prompt: `${prompt}, portrait photography style, clear facial features, suitable for avatar use${genderPrompt}`,
         style: selectedStyle || 'photorealistic',
         mood: selectedMood || 'friendly',
         size: '1024x1024',
@@ -94,7 +119,6 @@ export default function ImageUpload({ uploadedImage, onImageUpload, onImageGener
       
       if (response.imageUrl) {
         // Set the generated image URL for display
-        setGeneratedImageUrl(response.imageUrl)
         setPreview(response.imageUrl)
         console.log(`🎨 Avatar generated successfully! Image URL available for display.`)
         
@@ -133,21 +157,19 @@ export default function ImageUpload({ uploadedImage, onImageUpload, onImageGener
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl font-semibold text-text-primary">Vocalist</h2>
-            <TipButton
-              title="Avatar Generation"
-              content="Upload an image or generate an AI avatar that captures the mood, style, or personality of your vocalist. This visual inspiration helps create the perfect singing avatar for your song."
-              position="right"
-              size="sm"
-            />
-          </div>
-          {showValidation && uploadedImage && (
+        <div className="flex items-center gap-2">
+          <h2 className="text-xl font-semibold text-text-primary">Avatar</h2>
+          {showValidation && (uploadedImage || generatedImageUrl) && (
             <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
               <span className="text-white text-xs">✓</span>
             </div>
           )}
+          <TipButton
+            title="Avatar Generation"
+            content="Upload an image or generate an AI avatar that captures the mood, style, or personality of your vocalist. This visual inspiration helps create the perfect singing avatar for your song."
+            position="right"
+            size="sm"
+          />
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -161,23 +183,26 @@ export default function ImageUpload({ uploadedImage, onImageUpload, onImageGener
           >
             ✨ Custom
           </button>
-          <button
-            onClick={handleGenerateAvatar}
-            disabled={isGenerating}
-            className="btn-secondary flex items-center gap-2 px-4 py-2 text-sm"
-          >
-            {isGenerating ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Generating...
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-4 h-4" />
-                Generate
-              </>
-            )}
-          </button>
+          {/* Show Generate button in header only when custom options are hidden */}
+          {!showPromptInput && (
+            <button
+              onClick={handleGenerateAvatar}
+              disabled={isGenerating}
+              className="btn-secondary flex items-center gap-2 px-4 py-2 text-sm"
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  Generate
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
 
@@ -190,38 +215,57 @@ export default function ImageUpload({ uploadedImage, onImageUpload, onImageGener
 
       {/* Custom Prompt Input */}
       {showPromptInput && (
-        <div className="space-y-4 p-4 bg-bg-secondary border border-border-subtle rounded-xl">
+        <div className="space-y-6 p-4 bg-white/5 border border-white/10 rounded-xl">
           <div className="flex items-center justify-between">
-            <h4 className="font-medium text-text-primary">Personalization</h4>
+            <h4 className="font-medium text-white">Avatar Personalization</h4>
             <button
               onClick={() => setShowPromptInput(false)}
-              className="text-text-secondary hover:text-text-primary transition-colors"
+              className="text-gray-400 hover:text-white transition-colors"
             >
               ✕
             </button>
           </div>
+
+          {/* Avatar generation context info */}
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+            <div className="flex items-center space-x-2 text-blue-300 text-sm">
+              <Sparkles className="w-4 h-4" />
+              <span>
+                Creating a personalized avatar that matches your {selectedGender || 'vocal'} style with custom mood and appearance
+              </span>
+            </div>
+          </div>
           
           {/* Description Textarea */}
-          <textarea
-            value={customPrompt}
-            onChange={(e) => setCustomPrompt(e.target.value)}
-            placeholder="Describe the avatar you want to generate (e.g., 'A professional headshot of a friendly person with a warm smile')"
-            className="w-full p-4 bg-bg-primary border border-border-subtle rounded-xl text-text-primary placeholder-text-secondary resize-none focus:ring-2 focus:ring-melody-purple/20 focus:border-melody-purple transition-colors"
-            rows={4}
-          />
+          <div className="space-y-3">
+            <label className="text-sm font-medium text-gray-300 flex items-center gap-2">
+              <User className="w-4 h-4" />
+              Avatar Description
+            </label>
+            <textarea
+              value={customPrompt}
+              onChange={(e) => setCustomPrompt(e.target.value)}
+              placeholder="Describe the avatar you want to generate (e.g., 'A professional headshot of a friendly person with a warm smile')"
+              className="w-full p-4 bg-white/5 border border-white/20 rounded-xl text-white placeholder-gray-400 resize-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-colors"
+              rows={4}
+            />
+          </div>
           
           {/* Style and Mood Controls */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Style Dropdown */}
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-text-primary">Style</label>
+            <div className="space-y-3">
+              <label className="text-sm font-medium text-gray-300 flex items-center gap-2">
+                <Palette className="w-4 h-4" />
+                Style
+              </label>
               <select
                 value={selectedStyle}
                 onChange={(e) => setSelectedStyle(e.target.value)}
-                className="w-full p-3 bg-bg-primary border border-border-subtle rounded-xl text-text-primary focus:ring-2 focus:ring-melody-purple/20 focus:border-melody-purple transition-colors appearance-none cursor-pointer"
+                className="w-full bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-colors"
               >
                 {imageGenerationService.getStyleOptions().map((option) => (
-                  <option key={option.value} value={option.value}>
+                  <option key={option.value} value={option.value} className="bg-gray-800">
                     {option.label}
                   </option>
                 ))}
@@ -229,15 +273,18 @@ export default function ImageUpload({ uploadedImage, onImageUpload, onImageGener
             </div>
             
             {/* Mood Dropdown */}
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-text-primary">Mood</label>
+            <div className="space-y-3">
+              <label className="text-sm font-medium text-gray-300 flex items-center gap-2">
+                <Heart className="w-4 h-4" />
+                Mood
+              </label>
               <select
                 value={selectedMood}
                 onChange={(e) => setSelectedMood(e.target.value)}
-                className="w-full p-3 bg-bg-primary border border-border-subtle rounded-xl text-text-primary focus:ring-2 focus:ring-melody-purple/20 focus:border-melody-purple transition-colors appearance-none cursor-pointer"
+                className="w-full bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-colors"
               >
                 {imageGenerationService.getMoodOptions().map((option) => (
-                  <option key={option.value} value={option.value}>
+                  <option key={option.value} value={option.value} className="bg-gray-800">
                     {option.label}
                   </option>
                 ))}
@@ -246,16 +293,16 @@ export default function ImageUpload({ uploadedImage, onImageUpload, onImageGener
           </div>
           
           <div className="flex items-center justify-between text-sm">
-            <p className="text-text-secondary">
-              💡 Combine description, style, and mood for perfect results
+            <p className="text-gray-400">
+              💡 Be specific for best results.
             </p>
             <button
               onClick={() => {
                 setCustomPrompt('')
                 setSelectedStyle('')
                 setSelectedMood('')
-                setGeneratedImageUrl(null)
                 setError(null)
+                setPreview(null)
                 // Notify parent that generated image was cleared
                 if (onImageGenerated) {
                   onImageGenerated(null)
@@ -263,7 +310,33 @@ export default function ImageUpload({ uploadedImage, onImageUpload, onImageGener
               }}
               className="text-melody-purple hover:text-melody-purple/80 underline transition-colors"
             >
-              Clear All
+              Clear
+            </button>
+          </div>
+
+          {/* Generate Button - Full Width at Bottom */}
+          <div className="pt-2">
+            <div className="mb-3 text-center">
+              <span className="text-sm text-gray-400 bg-purple-500/20 px-3 py-1 rounded-full">
+                {selectedStyle || 'photorealistic'} avatar with {selectedMood || 'friendly'} mood
+              </span>
+            </div>
+            <button
+              onClick={handleGenerateAvatar}
+              disabled={isGenerating}
+              className="w-full bg-melody-purple hover:bg-melody-purple/90 disabled:bg-melody-purple/50 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  Generate Avatar
+                </>
+              )}
             </button>
           </div>
         </div>

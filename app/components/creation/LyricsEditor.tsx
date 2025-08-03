@@ -1,283 +1,362 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Sparkles, Loader2 } from 'lucide-react'
-import { murekaApiService } from '../../services/murekaApi'
+import { Wand2, Loader2, User, Sparkles, Music, Heart, Palette } from 'lucide-react'
+import { lyricsGenerationService } from '../../services/lyricsGeneration'
+import { titleGenerationService } from '../../services/titleGeneration'
 import TipButton from '../ui/TipButton'
 
 interface LyricsEditorProps {
   lyrics: string
   onLyricsChange: (lyrics: string) => void
-  onTitleChange?: (title: string) => void
-  imagePrompt?: string // Add this to use image context for lyrics generation
+  selectedGender: string
+  songTitle: string
+  songLength: number // New: Required song length in seconds
+  onTitleGenerated?: (title: string) => void // New: Callback when title is generated from lyrics
   showValidation?: boolean
 }
 
-export default function LyricsEditor({ lyrics, onLyricsChange, onTitleChange, imagePrompt, showValidation = false }: LyricsEditorProps) {
+export default function LyricsEditor({ 
+  lyrics, 
+  onLyricsChange, 
+  selectedGender, 
+  songTitle,
+  songLength,
+  onTitleGenerated,
+  showValidation = false 
+}: LyricsEditorProps) {
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [customPrompt, setCustomPrompt] = useState('')
-  const [showPromptInput, setShowPromptInput] = useState(false)
+  const [showCustomOptions, setShowCustomOptions] = useState(false)
   
-  // Lyric generation options
+  // Custom generation options
+  const [customPrompt, setCustomPrompt] = useState<string>('')
   const [selectedStyle, setSelectedStyle] = useState<string>('pop')
   const [selectedMood, setSelectedMood] = useState<string>('uplifting')
-  const [selectedGenre, setSelectedGenre] = useState<string>('pop')
 
-  // Available options (aligned with Mureka API)
+  // Available options
   const styles = [
-    'pop', 'ballad', 'indie', 'rock', 'jazz', 'classical', 'electronic', 
+    'pop', 'rock', 'ballad', 'jazz', 'electronic', 'acoustic', 'classical',
     'hip-hop', 'r&b', 'country', 'folk', 'blues', 'reggae', 'alternative', 'funk'
   ]
-  
+
   const moods = [
     'happy', 'uplifting', 'energetic', 'romantic', 'calm', 'dreamy', 
     'melancholic', 'sad', 'intense', 'chill', 'mysterious', 'playful'
   ]
-  
-  const genres = [
-    'pop', 'rock', 'jazz', 'classical', 'electronic', 'hip-hop', 'r&b', 
-    'country', 'folk', 'blues', 'reggae', 'alternative', 'indie', 'funk'
-  ]
 
   const handleGenerateLyrics = async () => {
+    if (songLength <= 0) {
+      setError('Please select a song length first')
+      return
+    }
+
     setIsGenerating(true)
     setError(null)
-    
+
     try {
-      // Create a prompt based on custom input, image context, or use a default
-      let prompt = customPrompt.trim()
+      console.log(`🎵 Generating ${songLength}s lyrics${songTitle ? ` for "${songTitle}"` : ''}`)
       
-      if (!prompt) {
-        prompt = imagePrompt 
-          ? `Create song lyrics inspired by this image description: ${imagePrompt}. Make it emotional and meaningful.`
-          : 'Create beautiful song lyrics about love, life, and meaningful moments. Include verse and chorus structure.'
-      }
-
-      const response = await murekaApiService.generateLyrics({
-        prompt,
-        style: selectedStyle,
-        mood: selectedMood,
-        genre: selectedGenre,
-        language: 'english'
+      // Use custom options if available, otherwise use defaults
+      const result = await lyricsGenerationService.generateLyrics({
+        title: songTitle || undefined, // Pass current title if exists, otherwise let API generate one
+        lengthInSeconds: songLength,
+        vocalGender: selectedGender as 'male' | 'female',
+        genre: showCustomOptions ? selectedStyle : 'pop',
+        mood: showCustomOptions ? selectedMood : 'upbeat',
+        customPrompt: showCustomOptions ? customPrompt : undefined
       })
+
+      onLyricsChange(result.lyrics)
       
-      if (response.lyrics) {
-        onLyricsChange(response.lyrics)
+      console.log(`✅ Generated ${result.wordCount} words (estimated ${result.estimatedDuration}s)`)
+      
+      // Auto-generate title based on new lyrics
+      if (onTitleGenerated && result.lyrics && result.lyrics.trim().length > 10) {
+        console.log('🎯 Auto-generating title for new lyrics...')
+        try {
+          const titleResult = await titleGenerationService.generateTitle({
+            lyrics: result.lyrics,
+            currentTitle: songTitle, // Pass current title to avoid repetition
+            style: showCustomOptions ? selectedStyle : 'pop',
+            mood: showCustomOptions ? selectedMood : 'uplifting',
+            selectedGender
+          })
+          
+          onTitleGenerated(titleResult.title)
+          console.log(`🎵 Auto-generated title: "${titleResult.title}"`)
+        } catch (titleError) {
+          console.warn('Title auto-generation failed, but lyrics were successful:', titleError)
+          // Don't block lyrics generation if title generation fails
+        }
       }
       
-      if (response.title && onTitleChange) {
-        onTitleChange(response.title)
+      // If the API returned a title directly, use that instead
+      if (result.title && onTitleGenerated && !result.lyrics) {
+        onTitleGenerated(result.title)
+        console.log(`📝 API provided title: "${result.title}"`)
       }
+      
     } catch (error) {
-      console.error('Error generating lyrics:', error)
-      setError('Failed to generate lyrics. Please try again.')
-      
-      // Fallback to demo lyrics if API fails
-      const fallbackLyrics = `Verse 1:
-In the morning light, I see your face
-Dancing shadows in this sacred space
-Every heartbeat tells a story true
-All my melodies belong to you
-
-Chorus:
-We're writing songs with our hearts tonight
-Every word glowing in the starlight
-This melody gram we're creating here
-Will echo love throughout the year
-
-Verse 2:
-Whispered secrets in the evening glow
-Harmonies that only we could know
-Through the music, our souls collide
-In this moment, we're alive`
-
-      onLyricsChange(fallbackLyrics)
+      console.error('Lyrics generation failed:', error)
+      setError(error instanceof Error ? error.message : 'Failed to generate lyrics')
     } finally {
       setIsGenerating(false)
     }
   }
 
-  const characterCount = lyrics.length
-  const maxChars = 3000
-  const isNearLimit = characterCount > maxChars * 0.8
+  const clearError = () => setError(null)
+
+  const formatTime = (seconds: number): string => {
+    if (seconds < 60) return `${seconds}s`
+    const minutes = Math.floor(seconds / 60)
+    const remainingSeconds = seconds % 60
+    return remainingSeconds > 0 ? `${minutes}m ${remainingSeconds}s` : `${minutes}m`
+  }
 
   return (
-    <div className="space-y-4" data-lyrics-editor>
-      {/* Header with Generate Button */}
+    <div className="space-y-4">
+      {/* Header with Custom Button */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl font-semibold text-text-primary">Lyrics</h2>
-            <TipButton
-              title="Writing Great Lyrics"
-              content="Write from the heart! Include verses, a catchy chorus, and maybe a bridge. Don't worry about perfect rhymes - focus on telling your story and expressing emotions authentically."
-              position="right"
-              size="sm"
-            />
-          </div>
+        <div className="flex items-center space-x-2">
+          <h2 className="text-xl font-semibold text-text-primary">Lyrics</h2>
           {showValidation && lyrics.trim() !== '' && (
             <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
               <span className="text-white text-xs">✓</span>
             </div>
           )}
+          <TipButton
+            title="Writing Great Lyrics"
+            content="Great lyrics tell a story, evoke emotion, and flow naturally with the melody. For shorter songs (10-30s), focus on a single powerful message. For longer songs (60s+), develop themes across verses and choruses."
+          />
         </div>
-        <div className="flex items-center gap-2">
+        
+        <div className="flex items-center space-x-2">
           <button
-            onClick={() => setShowPromptInput(!showPromptInput)}
-            data-custom-prompt-btn
+            onClick={() => setShowCustomOptions(!showCustomOptions)}
             className={`px-3 py-2 text-sm rounded-lg border transition-colors ${
-              showPromptInput 
+              showCustomOptions 
                 ? 'bg-melody-purple text-white border-melody-purple' 
                 : 'bg-bg-secondary text-text-secondary border-border-subtle hover:text-text-primary hover:border-melody-purple/30'
             }`}
-            title="Customize lyrics prompt"
+            title="Customize lyrics generation"
           >
             ✨ Custom
           </button>
-          <button
-            onClick={handleGenerateLyrics}
-            disabled={isGenerating}
-            data-generate-btn
-            className="btn-secondary flex items-center gap-2 px-4 py-2 text-sm"
-          >
-            {isGenerating ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Generating...
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-4 h-4" />
-                Generate
-              </>
-            )}
-          </button>
+          
+          {/* Show Generate button in header only when custom options are hidden */}
+          {!showCustomOptions && (
+            <button
+              onClick={handleGenerateLyrics}
+              disabled={isGenerating || songLength <= 0}
+              className="btn-secondary flex items-center gap-2 px-4 py-2 text-sm"
+            >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Generating...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    <span>Generate</span>
+                  </>
+                )}
+              </button>
+          )}
         </div>
       </div>
 
-      {/* Error Message */}
-      {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
-          <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
+      {/* Length-aware generation info (only when custom options are hidden) */}
+      {songLength > 0 && !showCustomOptions && (
+        <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+          <div className="flex items-center space-x-2 text-blue-300 text-sm">
+            <Sparkles className="w-4 h-4" />
+            <span>
+              AI will generate {songLength <= 30 ? 'concise, impactful' : songLength <= 60 ? 'structured verse-chorus' : 'full song'} lyrics 
+              and a matching title for your {formatTime(songLength)} song
+            </span>
+          </div>
         </div>
       )}
 
-      {/* Custom Settings */}
-      {showPromptInput && (
-        <div className="space-y-6 p-4 bg-bg-secondary border border-border-subtle rounded-xl">
+      {/* Custom Options Panel */}
+      {showCustomOptions && (
+        <div className="space-y-6 p-4 bg-white/5 border border-white/10 rounded-xl">
           <div className="flex items-center justify-between">
-            <h4 className="font-medium text-text-primary">Musical Style</h4>
+            <h4 className="font-medium text-white">Lyrics Customization</h4>
             <button
-              onClick={() => setShowPromptInput(false)}
-              className="text-text-secondary hover:text-text-primary transition-colors"
+              onClick={() => setShowCustomOptions(false)}
+              className="text-gray-400 hover:text-white transition-colors"
             >
               ✕
             </button>
           </div>
-          
-          {/* Lyric Generation Options */}
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Musical Style */}
-              <div>
-                <select
-                  value={selectedStyle}
-                  onChange={(e) => setSelectedStyle(e.target.value)}
-                  className="w-full bg-bg-primary border border-border-subtle rounded-lg px-3 py-2 text-text-primary focus:ring-2 focus:ring-melody-purple/20 focus:border-melody-purple transition-colors"
-                >
-                  {styles.map((style) => (
-                    <option key={style} value={style}>
-                      {style.charAt(0).toUpperCase() + style.slice(1)}
-                    </option>
-                  ))}
-                </select>
-              </div>
 
-              {/* Mood */}
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-2">
-                  Mood
-                </label>
-                <select
-                  value={selectedMood}
-                  onChange={(e) => setSelectedMood(e.target.value)}
-                  className="w-full bg-bg-primary border border-border-subtle rounded-lg px-3 py-2 text-text-primary focus:ring-2 focus:ring-melody-purple/20 focus:border-melody-purple transition-colors"
-                >
-                  {moods.map((mood) => (
-                    <option key={mood} value={mood}>
-                      {mood.charAt(0).toUpperCase() + mood.slice(1)}
-                    </option>
-                  ))}
-                </select>
+          {/* Length info in custom options */}
+          {songLength > 0 && (
+            <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+              <div className="flex items-center space-x-2 text-blue-300 text-sm">
+                <Sparkles className="w-4 h-4" />
+                <span>
+                  Generating {songLength <= 30 ? 'concise, impactful' : songLength <= 60 ? 'structured verse-chorus' : 'full song'} lyrics 
+                  for your {formatTime(songLength)} song with custom style and mood
+                </span>
               </div>
+            </div>
+          )}
 
-              {/* Genre */}
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-2">
-                  Genre
-                </label>
-                <select
-                  value={selectedGenre}
-                  onChange={(e) => setSelectedGenre(e.target.value)}
-                  className="w-full bg-bg-primary border border-border-subtle rounded-lg px-3 py-2 text-text-primary focus:ring-2 focus:ring-melody-purple/20 focus:border-melody-purple transition-colors"
-                >
-                  {genres.map((genre) => (
-                    <option key={genre} value={genre}>
-                      {genre.charAt(0).toUpperCase() + genre.slice(1)}
-                    </option>
-                  ))}
-                </select>
-              </div>
+          {/* Style and Mood Selection */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Style Selection */}
+            <div className="space-y-3">
+              <label className="text-sm font-medium text-gray-300 flex items-center gap-2">
+                <Music className="w-4 h-4" />
+                Style
+              </label>
+              <select
+                value={selectedStyle}
+                onChange={(e) => setSelectedStyle(e.target.value)}
+                className="w-full bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-colors"
+              >
+                {styles.map((style) => (
+                  <option key={style} value={style} className="bg-gray-800">
+                    {style.charAt(0).toUpperCase() + style.slice(1)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Mood Selection */}
+            <div className="space-y-3">
+              <label className="text-sm font-medium text-gray-300 flex items-center gap-2">
+                <Heart className="w-4 h-4" />
+                Mood
+              </label>
+              <select
+                value={selectedMood}
+                onChange={(e) => setSelectedMood(e.target.value)}
+                className="w-full bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-colors"
+              >
+                {moods.map((mood) => (
+                  <option key={mood} value={mood} className="bg-gray-800">
+                    {mood.charAt(0).toUpperCase() + mood.slice(1)}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
-          {/* Custom Prompt */}
-          <div className="space-y-4">
-            <h5 className="text-sm font-medium text-text-primary">Custom Prompt</h5>
+          {/* Custom Prompt Input */}
+          <div className="space-y-3">
+            <label className="text-sm font-medium text-gray-300 flex items-center gap-2">
+              <Palette className="w-4 h-4" />
+              Custom Theme (Optional)
+            </label>
             <textarea
               value={customPrompt}
               onChange={(e) => setCustomPrompt(e.target.value)}
-              placeholder="Describe what you want your lyrics to be about... (e.g., 'Write a song about overcoming challenges and finding strength', 'Create lyrics about a summer road trip with friends', 'Write emotional lyrics about missing someone')"
-              className="w-full p-4 bg-bg-primary border border-border-subtle rounded-xl text-text-primary placeholder-text-secondary resize-none focus:ring-2 focus:ring-melody-purple/20 focus:border-melody-purple transition-colors"
-              rows={6}
+              placeholder="Describe what you want your lyrics to be about... (e.g., 'Write a song about overcoming challenges', 'Create lyrics about a summer road trip')"
+              className="w-full p-4 bg-white/5 border border-white/20 rounded-xl text-white placeholder-gray-400 resize-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-colors"
+              rows={4}
             />
-            <div className="flex items-center justify-between text-sm">
-              <p className="text-text-secondary">
-                💡 Be specific about theme, mood, story, or emotions you want
-              </p>
-              <button
-                onClick={() => setCustomPrompt('')}
-                className="text-melody-purple hover:text-melody-purple/80 underline transition-colors"
-              >
-                Clear
-              </button>
-            </div>
+          </div>
+
+          <div className="flex items-center justify-between text-sm">
+            <p className="text-gray-400">
+              💡 Be specific for best results.
+            </p>
+            <button
+              onClick={() => setCustomPrompt('')}
+              className="text-melody-purple hover:text-melody-purple/80 underline transition-colors"
+            >
+              Clear
+            </button>
+          </div>
+
+          {/* Generate Button - Full Width at Bottom */}
+          <div className="pt-2">
+            {songLength > 0 && (
+              <div className="mb-3 text-center">
+                <span className="text-sm text-gray-400 bg-purple-500/20 px-3 py-1 rounded-full">
+                  {formatTime(songLength)} {selectedStyle} song with {selectedMood} mood
+                </span>
+              </div>
+            )}
+            <button
+              onClick={handleGenerateLyrics}
+              disabled={isGenerating || songLength <= 0}
+              className="w-full bg-melody-purple hover:bg-melody-purple/90 disabled:bg-melody-purple/50 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Generating Lyrics & Title...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  Generate Custom Lyrics
+                </>
+              )}
+            </button>
           </div>
         </div>
       )}
 
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-900/50 border border-red-500 rounded-lg p-4">
+          <div className="flex items-center space-x-2">
+            <svg className="w-5 h-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            <span className="text-red-400 text-sm">{error}</span>
+          </div>
+          <button
+            onClick={clearError}
+            className="mt-2 text-xs text-red-300 hover:text-red-100 underline"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* Lyrics Textarea */}
-      <div className="relative">
+      <div className="space-y-2">
         <textarea
           value={lyrics}
           onChange={(e) => onLyricsChange(e.target.value)}
-          placeholder="Write your lyrics here or tap Generate for AI assistance..."
-          rows={12}
-          maxLength={maxChars}
-          className="input resize-none text-base leading-relaxed min-h-[300px]"
+          placeholder={songLength > 0 
+            ? `Write your ${formatTime(songLength)} song lyrics here... or click "Generate" for AI assistance`
+            : "Select a song length first, then write your lyrics here..."
+          }
+          disabled={songLength <= 0}
+          className={`w-full h-64 p-4 bg-white/5 backdrop-blur-sm border rounded-xl text-white placeholder-gray-400 resize-none focus:outline-none focus:ring-2 transition-all ${
+            songLength <= 0 
+              ? 'border-gray-600 focus:ring-gray-500 cursor-not-allowed opacity-50'
+              : 'border-white/10 focus:border-purple-500 focus:ring-purple-500/50'
+          }`}
+          style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
         />
         
-        {/* Character Counter */}
-        <div className={`
-          absolute bottom-4 right-4 text-sm px-2 py-1 rounded-lg backdrop-blur-sm
-          ${isNearLimit 
-            ? 'text-melody-pink bg-melody-pink/10' 
-            : 'text-text-muted bg-bg-primary/50'
-          }
-        `}>
-          {characterCount}/{maxChars}
-        </div>
+        {/* Word count and length guidance */}
+        {lyrics.trim() && songLength > 0 && (
+          <div className="flex justify-between text-sm text-gray-400">
+            <span>
+              {lyrics.trim().split(/\s+/).filter(word => word.length > 0).length} words
+            </span>
+            <span>
+              Target: {Math.floor(songLength * 2.5)} words for {formatTime(songLength)}
+            </span>
+          </div>
+        )}
+        
+        {songLength <= 0 && (
+          <div className="text-sm text-gray-500 italic">
+            Please select a song length to enable lyrics editing
+          </div>
+        )}
       </div>
     </div>
   )

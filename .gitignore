@@ -25,3 +25,6 @@ yarn-error.log*
 # Next.js build artifacts
 .next/
 tsconfig.tsbuildinfo
+
+# MCP configuration (contains API keys)
+cursor-mcp-config.json

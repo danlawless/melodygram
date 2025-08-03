@@ -56,14 +56,85 @@ export default function MurekaApiTest() {
     murekaApiService.getReferenceTracksAndGenres()
   )
 
-  const testSongGeneration = () => testEndpoint('songGeneration', () => 
-    murekaApiService.generateSong({
-      lyrics: 'Happy birthday to you, Jessica so bright\nMay your day be filled with joy and light',
-      title: 'Jessica\'s Birthday Song',
-      style: 'pop',
-      mood: 'happy'
-    })
-  )
+  const testSongGeneration = async () => {
+    setLoading('songGeneration')
+    setErrors(prev => ({ ...prev, songGeneration: null }))
+    
+    try {
+      console.log('🎵 Starting song generation...')
+      
+      // Step 1: Generate song (SHORT FOR TESTING)
+      const songResponse = await murekaApiService.generateSong({
+        lyrics: 'Happy birthday to you\nJessica so bright', // Shorter lyrics = shorter song
+        title: 'Jessica\'s Birthday Song',
+        style: 'pop',
+        mood: 'happy',
+        duration: 15 // Try to limit to 15 seconds
+      })
+      
+      console.log('🎵 Song generation response:', songResponse)
+      setResults(prev => ({ ...prev, songGeneration: { ...songResponse, status: 'polling...' } }))
+      
+      // Step 2: Poll for completion
+      let songCompleted = false
+      let attempts = 0
+      const maxAttempts = 60 // 5 minutes max
+      
+      // Wait before first status check
+      await new Promise(resolve => setTimeout(resolve, 10000))
+      
+      while (!songCompleted && attempts < maxAttempts) {
+        attempts++
+        
+        try {
+          const statusResponse = await murekaApiService.querySongTask(songResponse.id)
+          console.log(`🔄 Song status check ${attempts}:`, statusResponse)
+          
+          if (statusResponse.status === 'succeeded' && statusResponse.choices?.[0]?.url) {
+            songCompleted = true
+            const finalResult = {
+              ...songResponse,
+              completedStatus: statusResponse.status,
+              audioUrl: statusResponse.choices[0].url,
+              duration: statusResponse.choices[0].duration,
+              attempts: attempts
+            }
+            setResults(prev => ({ ...prev, songGeneration: finalResult }))
+            console.log('✅ Song generation completed:', finalResult)
+            break
+          } else if (statusResponse.status === 'failed' || statusResponse.status === 'error') {
+            throw new Error(statusResponse.message || 'Song generation failed')
+          }
+          
+          // Update progress
+          setResults(prev => ({ 
+            ...prev, 
+            songGeneration: { 
+              ...songResponse, 
+              status: `polling... (${attempts}/${maxAttempts})`,
+              currentStatus: statusResponse.status 
+            }
+          }))
+          
+        } catch (statusError) {
+          console.warn(`Status check failed (${attempts}):`, statusError)
+        }
+        
+        // Wait before next check
+        await new Promise(resolve => setTimeout(resolve, 3000))
+      }
+      
+      if (!songCompleted) {
+        throw new Error('Song generation timed out after 5 minutes')
+      }
+      
+    } catch (error) {
+      console.error('❌ songGeneration error:', error)
+      setErrors(prev => ({ ...prev, songGeneration: error.message }))
+    } finally {
+      setLoading(null)
+    }
+  }
 
   return (
     <div className="p-6 max-w-4xl mx-auto">

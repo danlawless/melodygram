@@ -9,9 +9,11 @@ interface SingerSelectionProps {
   lyrics?: string
   title?: string
   isInlineMode?: boolean
+  avatarGenerated?: boolean // Add prop to track if avatar was generated
+  imageUploaded?: boolean   // Add prop to track if image was uploaded
 }
 
-export default function SingerSelection({ lyrics, title, isInlineMode = false }: SingerSelectionProps) {
+export default function SingerSelection({ lyrics, title, isInlineMode = false, avatarGenerated = false, imageUploaded = false }: SingerSelectionProps) {
   const [selectedSinger, setSelectedSinger] = useState<string | null>(null)
   const [singers, setSingers] = useState<Singer[]>([])
   const [loading, setLoading] = useState(true)
@@ -23,6 +25,9 @@ export default function SingerSelection({ lyrics, title, isInlineMode = false }:
   // Generation states
   const [isGenerating, setIsGenerating] = useState(false)
   const [generationTask, setGenerationTask] = useState<SongGenerationResponse | null>(null)
+
+  // Check if vocalist section should show validation (singer selected OR avatar generated OR image uploaded)
+  const showVocalistValidation = selectedSinger || avatarGenerated || imageUploaded
 
   // Fetch singers on component mount
   useEffect(() => {
@@ -128,6 +133,11 @@ export default function SingerSelection({ lyrics, title, isInlineMode = false }:
           <div className="flex-1 text-center">
             <div className="flex items-center justify-center gap-2 mb-1">
               <h1 className="text-xl font-bold text-text-primary">Pick a Singer</h1>
+              {showVocalistValidation && (
+                <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                  <span className="text-white text-xs">✓</span>
+                </div>
+              )}
               <TipButton
                 title="Choosing Your AI Singer"
                 content="Each AI singer has a unique voice style and personality. Listen to previews and read descriptions to find the perfect voice that matches your song's mood and genre."

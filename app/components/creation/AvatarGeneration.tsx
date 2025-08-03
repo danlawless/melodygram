@@ -32,6 +32,7 @@ export default function AvatarGeneration({
   const [selectedPreset, setSelectedPreset] = useState<string>('natural')
   const [selectedBackground, setSelectedBackground] = useState<'studio' | 'transparent' | 'original'>('studio')
   const [selectedQuality, setSelectedQuality] = useState<'standard' | 'high' | 'ultra'>('high')
+  const [selectedGender, setSelectedGender] = useState<'male' | 'female' | 'neutral'>('neutral')
 
   // Load presets on mount
   useEffect(() => {
@@ -45,6 +46,26 @@ export default function AvatarGeneration({
     }
   }, [avatarUrl, onAvatarComplete])
 
+  const handleGenderSelect = (gender: 'male' | 'female' | 'neutral') => {
+    setSelectedGender(gender)
+    // Add haptic feedback
+    if (typeof window !== 'undefined' && 'vibrate' in navigator) {
+      navigator.vibrate(10)
+    }
+  }
+
+  const generatePrompt = (gender: 'male' | 'female' | 'neutral'): string => {
+    switch (gender) {
+      case 'male':
+        return 'GENERATE MALE AVATAR'
+      case 'female':
+        return 'GENERATE FEMALE AVATAR'
+      case 'neutral':
+      default:
+        return '' // No specific gender instruction
+    }
+  }
+
   const handleCreateAvatar = async () => {
     if (!imageFile || !generatedAudioUrl) {
       return
@@ -53,11 +74,14 @@ export default function AvatarGeneration({
     clearError()
     
     try {
+      const prompt = generatePrompt(selectedGender)
+      
       await createAvatarFromFiles(imageFile, generatedAudioUrl, {
         animation: selectedPreset as 'natural' | 'expressive' | 'subtle',
         background: selectedBackground,
         quality: selectedQuality,
-        language: 'en' // You can make this dynamic based on your song language
+        language: 'en', // You can make this dynamic based on your song language
+        ...(prompt && { prompt })
       })
     } catch (err) {
       console.error('Failed to create avatar:', err)
@@ -145,6 +169,73 @@ export default function AvatarGeneration({
               <option value="high">High Quality</option>
               <option value="ultra">Ultra Quality</option>
             </select>
+          </div>
+
+          {/* Gender Preference */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-3">
+              Avatar Gender Preference
+            </label>
+            <div className="grid grid-cols-3 gap-3">
+              <button
+                onClick={() => handleGenderSelect('neutral')}
+                className={`
+                  px-4 py-3 rounded-lg font-medium text-sm transition-all duration-300
+                  ${selectedGender === 'neutral'
+                    ? 'bg-blue-600 text-white ring-2 ring-blue-400 scale-105'
+                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:scale-105'
+                  }
+                `}
+              >
+                Auto
+                {selectedGender === 'neutral' && (
+                  <div className="mt-1">
+                    <div className="w-1.5 h-1.5 bg-white rounded-full mx-auto"></div>
+                  </div>
+                )}
+              </button>
+              
+              <button
+                onClick={() => handleGenderSelect('female')}
+                className={`
+                  px-4 py-3 rounded-lg font-medium text-sm transition-all duration-300
+                  ${selectedGender === 'female'
+                    ? 'bg-pink-600 text-white ring-2 ring-pink-400 scale-105'
+                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:scale-105'
+                  }
+                `}
+              >
+                Female
+                {selectedGender === 'female' && (
+                  <div className="mt-1">
+                    <div className="w-1.5 h-1.5 bg-white rounded-full mx-auto"></div>
+                  </div>
+                )}
+              </button>
+              
+              <button
+                onClick={() => handleGenderSelect('male')}
+                className={`
+                  px-4 py-3 rounded-lg font-medium text-sm transition-all duration-300
+                  ${selectedGender === 'male'
+                    ? 'bg-blue-600 text-white ring-2 ring-blue-400 scale-105'
+                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:scale-105'
+                  }
+                `}
+              >
+                Male
+                {selectedGender === 'male' && (
+                  <div className="mt-1">
+                    <div className="w-1.5 h-1.5 bg-white rounded-full mx-auto"></div>
+                  </div>
+                )}
+              </button>
+            </div>
+            <p className="text-xs text-gray-400 mt-2">
+              {selectedGender === 'neutral' && 'Uses original image characteristics'}
+              {selectedGender === 'female' && 'Prompts: "GENERATE FEMALE AVATAR"'}
+              {selectedGender === 'male' && 'Prompts: "GENERATE MALE AVATAR"'}
+            </p>
           </div>
         </div>
       )}
