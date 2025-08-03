@@ -85,7 +85,7 @@ export default function CreationStudio() {
         <div className="px-4 py-4">
           <div className="text-center mb-4">
             <div className="flex items-center justify-center gap-2 mb-2">
-              <h1 className="text-xl font-bold text-text-primary">Create Your Song</h1>
+              <h1 className="text-xl font-bold text-text-primary">Create Your MelodyGram</h1>
               <TipButton
                 title="Song Creation Tips"
                 content="Fill in your song title, upload an inspiring image, and write your lyrics. Each element helps our AI create a more personalized song that matches your vision."

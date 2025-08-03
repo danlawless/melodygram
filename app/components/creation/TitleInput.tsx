@@ -7,9 +7,10 @@ interface TitleInputProps {
   title: string
   onTitleChange: (title: string) => void
   showValidation?: boolean
+  showError?: boolean
 }
 
-export default function TitleInput({ title, onTitleChange, showValidation = false }: TitleInputProps) {
+export default function TitleInput({ title, onTitleChange, showValidation = false, showError = false }: TitleInputProps) {
   return (
     <div className="space-y-4">
       {/* Header with Validation */}
@@ -41,11 +42,11 @@ export default function TitleInput({ title, onTitleChange, showValidation = fals
           onChange={(e) => onTitleChange(e.target.value)}
           placeholder="Enter your song title..."
           className={`w-full p-4 bg-bg-primary border rounded-xl text-text-primary placeholder-text-secondary focus:ring-2 focus:ring-melody-purple/20 focus:border-melody-purple transition-colors text-lg font-medium ${
-            showValidation 
-              ? title.trim() !== '' 
-                ? 'border-green-500 bg-bg-primary' 
-                : 'border-red-300 bg-bg-primary'
-              : 'border-border-subtle'
+            showValidation && title.trim() !== ''
+              ? 'border-green-500 bg-bg-primary'
+              : showError && title.trim() === ''
+                ? 'border-red-300 bg-bg-primary'
+                : 'border-border-subtle'
           }`}
         />
         
@@ -56,7 +57,7 @@ export default function TitleInput({ title, onTitleChange, showValidation = fals
       </div>
       
       {/* Validation message */}
-      {showValidation && title.trim() === '' && (
+      {showError && title.trim() === '' && (
         <p className="text-red-600 text-sm">Please enter a song title</p>
       )}
     </div>

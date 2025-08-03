@@ -197,8 +197,6 @@ In this moment, we're alive`
           {characterCount}/{maxChars}
         </div>
       </div>
-
-
     </div>
   )
 } 
