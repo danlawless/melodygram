@@ -18,6 +18,7 @@ export default function CreationStudio() {
   const [uploadedImage, setUploadedImage] = useState<File | null>(null)
   const [lyrics, setLyrics] = useState('')
   const [expandedPath, setExpandedPath] = useState<ExpandedPath>(null)
+  const [showValidationErrors, setShowValidationErrors] = useState(false)
 
   // Validation logic
   const isFormValid = () => {
@@ -42,6 +43,7 @@ export default function CreationStudio() {
     // Only allow expansion if form is valid
     if (isFormValid()) {
       setExpandedPath(expandedPath === path ? null : path)
+      setShowValidationErrors(false) // Clear validation errors when form is valid
       
       // Smooth scroll to the expanded section
       setTimeout(() => {
@@ -50,6 +52,9 @@ export default function CreationStudio() {
           element.scrollIntoView({ behavior: 'smooth', block: 'start' })
         }
       }, 100)
+    } else {
+      // Show validation errors when form is invalid
+      setShowValidationErrors(true)
     }
   }
 
@@ -105,8 +110,13 @@ export default function CreationStudio() {
         <div className="animate-entrance">
           <ImageUpload 
             uploadedImage={uploadedImage}
-            onImageUpload={setUploadedImage}
-            showValidation={true}
+            onImageUpload={(image) => {
+              setUploadedImage(image)
+              if (image && showValidationErrors) {
+                setShowValidationErrors(false)
+              }
+            }}
+            showValidation={uploadedImage !== null}
           />
         </div>
 
@@ -114,10 +124,20 @@ export default function CreationStudio() {
         <div className="animate-entrance-delay-1">
           <LyricsEditor 
             lyrics={lyrics}
-            onLyricsChange={setLyrics}
-            onTitleChange={setSongTitle}
+            onLyricsChange={(newLyrics) => {
+              setLyrics(newLyrics)
+              if (newLyrics.trim() !== '' && showValidationErrors) {
+                setShowValidationErrors(false)
+              }
+            }}
+            onTitleChange={(title) => {
+              setSongTitle(title)
+              if (title.trim() !== '' && showValidationErrors) {
+                setShowValidationErrors(false)
+              }
+            }}
             imagePrompt={uploadedImage ? "Create lyrics inspired by the uploaded image" : undefined}
-            showValidation={true}
+            showValidation={lyrics.trim() !== ''}
           />
         </div>
 
@@ -125,8 +145,18 @@ export default function CreationStudio() {
         <div className="animate-entrance-delay-1">
           <TitleInput 
             title={songTitle}
-            onTitleChange={setSongTitle}
-            showValidation={true}
+            onTitleChange={(title) => {
+              setSongTitle(title)
+              if (title.trim() !== '' && showValidationErrors) {
+                setShowValidationErrors(false)
+              }
+            }}
+            showValidation={songTitle.trim() !== ''}
+            showError={showValidationErrors}
+            lyrics={lyrics}
+            style={expandedPath === 'custom' ? 'custom' : undefined}
+            mood={expandedPath === 'custom' ? 'upbeat' : undefined}
+            genre={expandedPath === 'custom' ? 'pop' : undefined}
           />
         </div>
 
