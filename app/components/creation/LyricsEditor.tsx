@@ -8,9 +8,10 @@ interface LyricsEditorProps {
   lyrics: string
   onLyricsChange: (lyrics: string) => void
   imagePrompt?: string // Add this to use image context for lyrics generation
+  showValidation?: boolean
 }
 
-export default function LyricsEditor({ lyrics, onLyricsChange, imagePrompt }: LyricsEditorProps) {
+export default function LyricsEditor({ lyrics, onLyricsChange, imagePrompt, showValidation = false }: LyricsEditorProps) {
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -74,7 +75,17 @@ In this moment, we're alive`
     <div className="space-y-4">
       {/* Header with Generate Button */}
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-text-primary">Lyrics</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-xl font-semibold text-text-primary">Lyrics</h2>
+          {showValidation && lyrics.trim() !== '' && (
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                <span className="text-white text-xs">✓</span>
+              </div>
+              <span className="text-green-600 text-sm font-medium">Complete</span>
+            </div>
+          )}
+        </div>
         <button
           onClick={handleGenerateLyrics}
           disabled={isGenerating}

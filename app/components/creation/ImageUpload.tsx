@@ -6,9 +6,10 @@ import { Upload, Image as ImageIcon, X } from 'lucide-react'
 interface ImageUploadProps {
   uploadedImage: File | null
   onImageUpload: (file: File | null) => void
+  showValidation?: boolean
 }
 
-export default function ImageUpload({ uploadedImage, onImageUpload }: ImageUploadProps) {
+export default function ImageUpload({ uploadedImage, onImageUpload, showValidation = false }: ImageUploadProps) {
   const [isDragOver, setIsDragOver] = useState(false)
   const [preview, setPreview] = useState<string | null>(null)
 
@@ -47,7 +48,17 @@ export default function ImageUpload({ uploadedImage, onImageUpload }: ImageUploa
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold text-text-primary">Upload Photo</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold text-text-primary">Upload Photo</h2>
+        {showValidation && uploadedImage && (
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+              <span className="text-white text-xs">✓</span>
+            </div>
+            <span className="text-green-600 text-sm font-medium">Complete</span>
+          </div>
+        )}
+      </div>
       
       {!preview ? (
         <div
@@ -55,7 +66,9 @@ export default function ImageUpload({ uploadedImage, onImageUpload }: ImageUploa
             relative border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-300 cursor-pointer
             ${isDragOver 
               ? 'border-melody-pink bg-melody-pink/10 shadow-glow' 
-              : 'border-melody-purple bg-gradient-to-br from-melody-purple/5 to-melody-pink/5 hover:border-melody-pink hover:shadow-glow'
+              : showValidation && !uploadedImage
+                ? 'border-amber-500 bg-amber-500/10 hover:border-amber-600'
+                : 'border-melody-purple bg-gradient-to-br from-melody-purple/5 to-melody-pink/5 hover:border-melody-pink hover:shadow-glow'
             }
           `}
           onDrop={handleDrop}

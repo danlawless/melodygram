@@ -17,8 +17,30 @@ export default function CreationStudio() {
   const [lyrics, setLyrics] = useState('')
   const [currentScreen, setCurrentScreen] = useState<Screen>('creation')
 
+  // Validation logic
+  const isFormValid = () => {
+    return songTitle.trim() !== '' && 
+           lyrics.trim() !== '' && 
+           uploadedImage !== null
+  }
+
+  const getValidationMessage = () => {
+    const missing: string[] = []
+    if (songTitle.trim() === '') missing.push('song title')
+    if (lyrics.trim() === '') missing.push('lyrics')
+    if (uploadedImage === null) missing.push('image')
+    
+    if (missing.length === 0) return ''
+    if (missing.length === 1) return `Please add a ${missing[0]}`
+    if (missing.length === 2) return `Please add ${missing[0]} and ${missing[1]}`
+    return `Please add ${missing[0]}, ${missing[1]}, and ${missing[2]}`
+  }
+
   const handleNavigateToScreen = (screen: Screen) => {
-    setCurrentScreen(screen)
+    // Only allow navigation if form is valid
+    if (isFormValid()) {
+      setCurrentScreen(screen)
+    }
   }
 
   const handleBackToCreation = () => {
@@ -81,14 +103,27 @@ export default function CreationStudio() {
             <p className="text-sm text-text-secondary">Add lyrics and choose your path</p>
           </div>
           
-          <div className="max-w-md mx-auto">
+          <div className="max-w-md mx-auto relative">
             <input
               type="text"
               placeholder="Enter your song title"
               value={songTitle}
               onChange={(e) => setSongTitle(e.target.value)}
-              className="w-full bg-bg-secondary border border-border-subtle rounded-xl px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-melody-purple focus:border-transparent transition-all"
+              className={`
+                w-full bg-bg-secondary border rounded-xl px-4 py-3 pr-12 text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 transition-all
+                ${songTitle.trim() !== '' 
+                  ? 'border-green-500 focus:ring-green-500/20 focus:border-green-500' 
+                  : 'border-border-subtle focus:ring-melody-purple/20 focus:border-melody-purple'
+                }
+              `}
             />
+            {songTitle.trim() !== '' && (
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                  <span className="text-white text-xs">✓</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -100,6 +135,7 @@ export default function CreationStudio() {
           <ImageUpload 
             uploadedImage={uploadedImage}
             onImageUpload={setUploadedImage}
+            showValidation={true}
           />
         </div>
 
@@ -109,12 +145,17 @@ export default function CreationStudio() {
             lyrics={lyrics}
             onLyricsChange={setLyrics}
             imagePrompt={uploadedImage ? "Create lyrics inspired by the uploaded image" : undefined}
+            showValidation={true}
           />
         </div>
 
         {/* Path Navigation */}
         <div className="animate-entrance-delay-2">
-          <PathNavigation onNavigate={handleNavigateToScreen} />
+          <PathNavigation 
+            onNavigate={handleNavigateToScreen}
+            isFormValid={isFormValid()}
+            validationMessage={getValidationMessage()}
+          />
         </div>
       </div>
     </div>

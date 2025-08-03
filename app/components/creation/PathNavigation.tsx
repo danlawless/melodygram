@@ -37,15 +37,25 @@ const navigationPaths: NavigationPath[] = [
 
 interface PathNavigationProps {
   onNavigate: (screen: 'singer' | 'custom' | 'music') => void
+  isFormValid: boolean
+  validationMessage?: string
 }
 
-export default function PathNavigation({ onNavigate }: PathNavigationProps) {
+export default function PathNavigation({ onNavigate, isFormValid, validationMessage }: PathNavigationProps) {
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
 
   const handlePathSelect = (pathId: string) => {
+    if (!isFormValid) {
+      // Add error haptic feedback
+      if (typeof window !== 'undefined' && 'vibrate' in navigator) {
+        navigator.vibrate([100, 50, 100]) // Error pattern
+      }
+      return
+    }
+
     setSelectedPath(pathId)
     
-    // Add haptic feedback for mobile
+    // Add success haptic feedback for mobile
     if (typeof window !== 'undefined' && 'vibrate' in navigator) {
       navigator.vibrate(10)
     }
@@ -58,7 +68,17 @@ export default function PathNavigation({ onNavigate }: PathNavigationProps) {
     <div className="space-y-6">
       <div className="text-center space-y-2">
         <h3 className="text-lg font-semibold text-text-primary">Choose Your Path</h3>
-        <p className="text-text-secondary">Select how you want to create your melody</p>
+        <p className="text-text-secondary">
+          {isFormValid 
+            ? 'Select how you want to create your melody' 
+            : 'Complete all fields above to continue'
+          }
+        </p>
+        {!isFormValid && validationMessage && (
+          <div className="mt-3 p-3 bg-amber-500/20 border border-amber-500/50 rounded-xl">
+            <p className="text-amber-600 text-sm font-medium">{validationMessage}</p>
+          </div>
+        )}
       </div>
 
       {/* Navigation Buttons */}
@@ -67,20 +87,25 @@ export default function PathNavigation({ onNavigate }: PathNavigationProps) {
           <div key={path.id} className={`animate-entrance-delay-${index + 1}`}>
             <button
               onClick={() => handlePathSelect(path.id)}
+              disabled={!isFormValid}
               className={`
                 group relative flex flex-col items-center gap-3 p-6 rounded-3xl transition-all duration-300 touch-target
-                ${selectedPath === path.id
-                  ? 'bg-melody-gradient shadow-glow scale-105'
-                  : 'bg-bg-secondary hover:bg-bg-accent hover:scale-105 shadow-card'
+                ${!isFormValid
+                  ? 'bg-gray-600 cursor-not-allowed opacity-50'
+                  : selectedPath === path.id
+                    ? 'bg-melody-gradient shadow-glow scale-105'
+                    : 'bg-bg-secondary hover:bg-bg-accent hover:scale-105 shadow-card'
                 }
               `}
             >
               {/* Icon Circle */}
               <div className={`
                 w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300
-                ${selectedPath === path.id
-                  ? 'bg-white/20 text-white'
-                  : 'bg-melody-gradient text-white group-hover:scale-110'
+                ${!isFormValid
+                  ? 'bg-gray-500 text-gray-300'
+                  : selectedPath === path.id
+                    ? 'bg-white/20 text-white'
+                    : 'bg-melody-gradient text-white group-hover:scale-110'
                 }
               `}>
                 {path.icon}
@@ -90,13 +115,23 @@ export default function PathNavigation({ onNavigate }: PathNavigationProps) {
               <div className="text-center space-y-1">
                 <div className={`
                   text-lg font-semibold transition-colors
-                  ${selectedPath === path.id ? 'text-white' : 'text-text-primary'}
+                  ${!isFormValid
+                    ? 'text-gray-400'
+                    : selectedPath === path.id 
+                      ? 'text-white' 
+                      : 'text-text-primary'
+                  }
                 `}>
                   {path.emoji} {path.label}
                 </div>
                 <div className={`
                   text-xs transition-colors
-                  ${selectedPath === path.id ? 'text-white/80' : 'text-text-muted'}
+                  ${!isFormValid
+                    ? 'text-gray-500'
+                    : selectedPath === path.id 
+                      ? 'text-white/80' 
+                      : 'text-text-muted'
+                  }
                 `}>
                   {path.description}
                 </div>
