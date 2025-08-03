@@ -470,6 +470,10 @@ export default function CreationStudio() {
               mood: selectedVocal === 'male' ? 'Confident' : 'Happy'
             })
             console.log('🎉 Song and avatar creation completed successfully!')
+            
+            // Clear creation caches after successful generation to start fresh next time
+            const { clearCreationCaches } = await import('../../utils/cacheManager')
+            clearCreationCaches()
           } else {
             throw new Error('Avatar generation completed but no video URL returned')
           }

@@ -43,6 +43,9 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
   // Avatar editor state
   const [isAvatarEditorOpen, setIsAvatarEditorOpen] = useState(false)
   
+  // Profile avatar persistence
+  const PROFILE_AVATAR_KEY = 'melodygram_profile_avatar_session'
+  
   // Credit state
   const [creditBalance, setCreditBalance] = useState(0)
   const [creditPackages, setCreditPackages] = useState<CreditPackage[]>([])
@@ -55,7 +58,52 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
   // Load user data on mount
   useEffect(() => {
     loadUserData()
+    loadSessionAvatar()
   }, [])
+
+  // Save avatar to session storage with debouncing
+  useEffect(() => {
+    if (typeof window !== 'undefined' && avatar) {
+      const timeoutId = setTimeout(() => {
+        try {
+          localStorage.setItem(PROFILE_AVATAR_KEY, JSON.stringify({
+            avatarUrl: avatar,
+            lastUpdated: new Date().toISOString()
+          }))
+          console.log('💾 Saved profile avatar to session:', avatar.substring(0, 50) + '...')
+        } catch (error) {
+          console.error('Failed to save profile avatar to session:', error)
+        }
+      }, 500) // Debounce saves by 500ms
+      
+      return () => clearTimeout(timeoutId)
+    }
+  }, [avatar])
+
+  const loadSessionAvatar = () => {
+    if (typeof window !== 'undefined') {
+      try {
+        const sessionData = localStorage.getItem(PROFILE_AVATAR_KEY)
+        if (sessionData) {
+          const { avatarUrl, lastUpdated } = JSON.parse(sessionData)
+          
+          // Check if session is not too old (24 hours)
+          const sessionAge = Date.now() - new Date(lastUpdated).getTime()
+          const maxAge = 24 * 60 * 60 * 1000 // 24 hours
+          
+          if (sessionAge < maxAge && avatarUrl) {
+            setAvatar(avatarUrl)
+            console.log('📸 Restored profile avatar from session:', avatarUrl.substring(0, 50) + '...')
+          } else {
+            // Clear old session
+            localStorage.removeItem(PROFILE_AVATAR_KEY)
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load profile avatar from session:', error)
+      }
+    }
+  }
 
   const loadUserData = () => {
     setIsLoading(true)
@@ -190,6 +238,29 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
       title: 'Avatar updated!',
       message: 'Your profile picture has been updated.'
     })
+  }
+
+  // Clear profile avatar cache (for debugging or manual reset)
+  const handleClearAvatarCache = () => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem(PROFILE_AVATAR_KEY)
+        setAvatar('')
+        showToast({
+          type: 'info',
+          title: 'Avatar cache cleared',
+          message: 'Profile avatar has been reset.'
+        })
+        console.log('🗑️ Manually cleared profile avatar cache')
+      } catch (error) {
+        console.error('Failed to clear avatar cache:', error)
+        showToast({
+          type: 'error',
+          title: 'Clear failed',
+          message: 'Failed to clear avatar cache.'
+        })
+      }
+    }
   }
 
   const getUserStats = () => {
