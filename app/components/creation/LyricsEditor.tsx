@@ -149,7 +149,7 @@ export default function LyricsEditor({
             <button
               onClick={handleGenerateLyrics}
               disabled={isGenerating || songLength <= 0}
-              className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center justify-center space-x-2 px-3 py-2 rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
             >
                 {isGenerating ? (
                   <>
@@ -286,7 +286,7 @@ export default function LyricsEditor({
             <button
               onClick={handleGenerateLyrics}
               disabled={isGenerating || songLength <= 0}
-              className="w-full flex items-center justify-center space-x-2 px-3 py-3 rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full flex items-center justify-center space-x-2 px-3 py-2 rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isGenerating ? (
                 <>
