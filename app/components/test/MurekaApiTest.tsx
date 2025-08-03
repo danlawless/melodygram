@@ -26,7 +26,7 @@ export default function MurekaApiTest() {
 
   const testLyricGeneration = () => testEndpoint('lyrics', () => 
     murekaApiService.generateLyrics({
-      prompt: 'Write a happy birthday song for Jessica with upbeat energy and celebration vibes',
+      prompt: 'Write a happy birthday song for Jessica with upbeat energy and celebration vibes. Include a catchy title.',
       style: 'pop',
       mood: 'happy'
     })
@@ -34,7 +34,7 @@ export default function MurekaApiTest() {
 
   const testCustomPrompt = () => testEndpoint('customPrompt', () => 
     murekaApiService.generateLyrics({
-      prompt: 'Create emotional lyrics about a long-distance relationship, focusing on missing someone special and the hope of reuniting. Make it heartfelt and relatable.',
+      prompt: 'Create emotional lyrics about a long-distance relationship, focusing on missing someone special and the hope of reuniting. Make it heartfelt and relatable. Include a meaningful title that captures the longing.',
       style: 'ballad',
       mood: 'romantic'
     })
@@ -42,7 +42,7 @@ export default function MurekaApiTest() {
 
   const testCreativePrompt = () => testEndpoint('creativePrompt', () => 
     murekaApiService.generateLyrics({
-      prompt: 'Write an adventurous song about exploring new cities, trying new foods, and making unexpected friends while traveling. Capture the excitement and freedom of discovery.',
+      prompt: 'Write an adventurous song about exploring new cities, trying new foods, and making unexpected friends while traveling. Capture the excitement and freedom of discovery. Create an inspiring title about wanderlust.',
       style: 'indie',
       mood: 'energetic'
     })

@@ -4,6 +4,7 @@ import React, { useState } from 'react'
 import { Upload, Sparkles, Music, User, Mic, ArrowLeft } from 'lucide-react'
 import ImageUpload from './ImageUpload'
 import LyricsEditor from './LyricsEditor'
+import TitleInput from './TitleInput'
 import PathNavigation from './PathNavigation'
 import SingerSelection from '../singer/SingerSelection'
 import CustomOptions from './CustomOptions'
@@ -94,28 +95,7 @@ export default function CreationStudio() {
             <p className="text-sm text-text-secondary">Add lyrics and choose your path</p>
           </div>
           
-          <div className="max-w-md mx-auto relative">
-            <input
-              type="text"
-              placeholder="Enter your song title"
-              value={songTitle}
-              onChange={(e) => setSongTitle(e.target.value)}
-              className={`
-                w-full bg-bg-secondary border rounded-xl px-4 py-3 pr-12 text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 transition-all
-                ${songTitle.trim() !== '' 
-                  ? 'border-green-500 focus:ring-green-500/20 focus:border-green-500' 
-                  : 'border-border-subtle focus:ring-melody-purple/20 focus:border-melody-purple'
-                }
-              `}
-            />
-            {songTitle.trim() !== '' && (
-              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-xs">✓</span>
-                </div>
-              </div>
-            )}
-          </div>
+
         </div>
       </div>
 
@@ -135,7 +115,17 @@ export default function CreationStudio() {
           <LyricsEditor 
             lyrics={lyrics}
             onLyricsChange={setLyrics}
+            onTitleChange={setSongTitle}
             imagePrompt={uploadedImage ? "Create lyrics inspired by the uploaded image" : undefined}
+            showValidation={true}
+          />
+        </div>
+
+        {/* Title Input Section */}
+        <div className="animate-entrance-delay-1">
+          <TitleInput 
+            title={songTitle}
+            onTitleChange={setSongTitle}
             showValidation={true}
           />
         </div>

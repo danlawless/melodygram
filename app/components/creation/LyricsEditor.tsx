@@ -8,11 +8,12 @@ import TipButton from '../ui/TipButton'
 interface LyricsEditorProps {
   lyrics: string
   onLyricsChange: (lyrics: string) => void
+  onTitleChange?: (title: string) => void
   imagePrompt?: string // Add this to use image context for lyrics generation
   showValidation?: boolean
 }
 
-export default function LyricsEditor({ lyrics, onLyricsChange, imagePrompt, showValidation = false }: LyricsEditorProps) {
+export default function LyricsEditor({ lyrics, onLyricsChange, onTitleChange, imagePrompt, showValidation = false }: LyricsEditorProps) {
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [customPrompt, setCustomPrompt] = useState('')
@@ -39,12 +40,13 @@ export default function LyricsEditor({ lyrics, onLyricsChange, imagePrompt, show
         language: 'english'
       })
       
-      // Format the lyrics with title if provided
-      const formattedLyrics = response.title 
-        ? `Title: ${response.title}\n\n${response.lyrics}`
-        : response.lyrics
-
-      onLyricsChange(formattedLyrics)
+      if (response.lyrics) {
+        onLyricsChange(response.lyrics)
+      }
+      
+      if (response.title && onTitleChange) {
+        onTitleChange(response.title)
+      }
     } catch (error) {
       console.error('Error generating lyrics:', error)
       setError('Failed to generate lyrics. Please try again.')
@@ -196,15 +198,7 @@ In this moment, we're alive`
         </div>
       </div>
 
-      {/* Helper Text */}
-      <div className="text-sm text-text-secondary space-y-1">
-        <p>💡 <strong>Tips:</strong></p>
-        <ul className="list-disc list-inside space-y-1 text-text-muted">
-          <li>Use verse/chorus structure for best results</li>
-          <li>Keep lines concise and rhythmic</li>
-          <li>AI generation creates lyrics that match your photo's mood</li>
-        </ul>
-      </div>
+
     </div>
   )
 } 
