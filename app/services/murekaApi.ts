@@ -1,9 +1,8 @@
 import axios from 'axios'
 
 // Mureka API configuration
-const MUREKA_API_BASE_URL = process.env.NEXT_PUBLIC_MUREKA_API_BASE_URL || 'https://platform.mureka.ai'
-const API_TOKEN = process.env.MUREKA_API_TOKEN
-const ACCOUNT_ID = process.env.MUREKA_ACCOUNT_ID
+const MUREKA_API_BASE_URL = 'https://api.mureka.ai'
+const API_TOKEN = 'op_mdv80rml6C9Ja67QJEB3Pf32QXKc9b2'
 
 // Axios instance with default configuration
 const murekaApi = axios.create({
