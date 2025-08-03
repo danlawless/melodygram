@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import { ArrowLeft, Loader2, AlertCircle, Zap, X, Shuffle } from 'lucide-react'
 import { murekaApiService, SongGenerationResponse } from '../../services/murekaApi'
+import TipButton from '../ui/TipButton'
 
 interface CustomOptionsProps {
   lyrics?: string
@@ -148,7 +149,14 @@ export default function CustomOptions({ lyrics, title, isInlineMode = false }: C
       <div className={isInlineMode ? "px-6 py-4 border-b border-border-subtle" : "sticky top-0 z-10 bg-bg-primary/95 backdrop-blur-sm border-b border-border-subtle"}>
         <div className="flex items-center justify-center p-4">
           <div className="flex-1 text-center">
-            <h1 className="text-xl font-bold text-text-primary">Choose a Style</h1>
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <h1 className="text-xl font-bold text-text-primary">Choose a Style</h1>
+              <TipButton
+                title="Customizing Your Sound"
+                content="Mix and match visual styles, moods, and vocal types to create a unique sound. Each combination produces different musical results - experiment to find your perfect style!"
+                position="bottom"
+              />
+            </div>
             <p className="text-sm text-text-secondary">
               {title && `"${title}" • `}{getSelectedOptionsText()}
             </p>

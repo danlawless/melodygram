@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { ArrowLeft, Play, Pause, Music } from 'lucide-react'
 import { murekaApiService, ReferenceTrack } from '../../services/murekaApi'
+import TipButton from '../ui/TipButton'
 
 interface MusicLibraryProps {
   lyrics?: string
@@ -86,7 +87,14 @@ export default function MusicLibrary({ lyrics, title, onGenerate, isInlineMode =
       <div className={isInlineMode ? "px-6 py-4 border-b border-border-subtle" : "sticky top-0 z-10 bg-bg-primary border-b border-border-subtle"}>
         <div className="flex flex-col items-center p-4">
           <div className="text-center mb-4">
-            <h1 className="text-xl font-bold text-text-primary">Sync Music</h1>
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <h1 className="text-xl font-bold text-text-primary">Sync Music</h1>
+              <TipButton
+                title="Reference Track Selection"
+                content="Choose a reference track that matches the style, tempo, or mood you want for your song. The AI will use this as inspiration for the musical arrangement and production style."
+                position="bottom"
+              />
+            </div>
             <p className="text-sm text-text-secondary">
               {title && `"${title}" • `}Choose a reference track
             </p>

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { ArrowLeft, Star, Heart, Zap, Loader2, AlertCircle, Search, Filter } from 'lucide-react'
 import { Singer, murekaApiService, SongGenerationResponse } from '../../services/murekaApi'
+import TipButton from '../ui/TipButton'
 
 interface SingerSelectionProps {
   lyrics?: string
@@ -125,7 +126,14 @@ export default function SingerSelection({ lyrics, title, isInlineMode = false }:
       <div className={isInlineMode ? "px-6 py-4 border-b border-border-subtle" : "sticky top-0 z-10 bg-bg-primary/95 backdrop-blur-sm border-b border-border-subtle"}>
         <div className="flex items-center justify-between p-4">
           <div className="flex-1 text-center">
-            <h1 className="text-xl font-bold text-text-primary">Pick a Singer</h1>
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <h1 className="text-xl font-bold text-text-primary">Pick a Singer</h1>
+              <TipButton
+                title="Choosing Your AI Singer"
+                content="Each AI singer has a unique voice style and personality. Listen to previews and read descriptions to find the perfect voice that matches your song's mood and genre."
+                position="bottom"
+              />
+            </div>
             <p className="text-sm text-text-secondary">
               {title && `"${title}" • `}{loading ? 'Loading singers...' : `${filteredSingers.length} AI voices available`}
             </p>

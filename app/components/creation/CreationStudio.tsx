@@ -8,6 +8,7 @@ import PathNavigation from './PathNavigation'
 import SingerSelection from '../singer/SingerSelection'
 import CustomOptions from './CustomOptions'
 import MusicLibrary from './MusicLibrary'
+import TipButton from '../ui/TipButton'
 
 type ExpandedPath = 'singer' | 'custom' | 'music' | null
 
@@ -82,7 +83,14 @@ export default function CreationStudio() {
       <div className="sticky top-0 z-10 bg-bg-primary/95 backdrop-blur-sm border-b border-border-subtle">
         <div className="px-4 py-4">
           <div className="text-center mb-4">
-            <h1 className="text-xl font-bold text-text-primary">Create Your Song</h1>
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <h1 className="text-xl font-bold text-text-primary">Create Your Song</h1>
+              <TipButton
+                title="Song Creation Tips"
+                content="Fill in your song title, upload an inspiring image, and write your lyrics. Each element helps our AI create a more personalized song that matches your vision."
+                position="bottom"
+              />
+            </div>
             <p className="text-sm text-text-secondary">Add lyrics and choose your path</p>
           </div>
           

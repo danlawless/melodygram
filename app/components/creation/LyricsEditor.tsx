@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import { Sparkles, Loader2 } from 'lucide-react'
 import { murekaApiService } from '../../services/murekaApi'
+import TipButton from '../ui/TipButton'
 
 interface LyricsEditorProps {
   lyrics: string
@@ -76,7 +77,15 @@ In this moment, we're alive`
       {/* Header with Generate Button */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <h2 className="text-xl font-semibold text-text-primary">Lyrics</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-semibold text-text-primary">Lyrics</h2>
+            <TipButton
+              title="Writing Great Lyrics"
+              content="Write from the heart! Include verses, a catchy chorus, and maybe a bridge. Don't worry about perfect rhymes - focus on telling your story and expressing emotions authentically."
+              position="right"
+              size="sm"
+            />
+          </div>
           {showValidation && lyrics.trim() !== '' && (
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">

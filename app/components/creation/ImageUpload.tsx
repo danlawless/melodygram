@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback } from 'react'
 import { Upload, Image as ImageIcon, X } from 'lucide-react'
+import TipButton from '../ui/TipButton'
 
 interface ImageUploadProps {
   uploadedImage: File | null
@@ -49,7 +50,15 @@ export default function ImageUpload({ uploadedImage, onImageUpload, showValidati
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-text-primary">Upload Your Singer!</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-xl font-semibold text-text-primary">Upload Photo</h2>
+          <TipButton
+            title="Image Inspiration"
+            content="Upload an image that captures the mood, style, or story of your song. This visual inspiration helps the AI understand the emotional tone and aesthetic you're aiming for."
+            position="right"
+            size="sm"
+          />
+        </div>
         {showValidation && uploadedImage && (
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
