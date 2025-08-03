@@ -9,13 +9,13 @@ import SingerSelection from '../singer/SingerSelection'
 import CustomOptions from './CustomOptions'
 import MusicLibrary from './MusicLibrary'
 
-type Screen = 'creation' | 'singer' | 'custom' | 'music'
+type ExpandedPath = 'singer' | 'custom' | 'music' | null
 
 export default function CreationStudio() {
   const [songTitle, setSongTitle] = useState('')
   const [uploadedImage, setUploadedImage] = useState<File | null>(null)
   const [lyrics, setLyrics] = useState('')
-  const [currentScreen, setCurrentScreen] = useState<Screen>('creation')
+  const [expandedPath, setExpandedPath] = useState<ExpandedPath>(null)
 
   // Validation logic
   const isFormValid = () => {
@@ -36,15 +36,31 @@ export default function CreationStudio() {
     return `Please add ${missing[0]}, ${missing[1]}, and ${missing[2]}`
   }
 
-  const handleNavigateToScreen = (screen: Screen) => {
-    // Only allow navigation if form is valid
+  const handlePathExpand = (path: 'singer' | 'custom' | 'music') => {
+    // Only allow expansion if form is valid
     if (isFormValid()) {
-      setCurrentScreen(screen)
+      setExpandedPath(expandedPath === path ? null : path)
+      
+      // Smooth scroll to the expanded section
+      setTimeout(() => {
+        const element = document.getElementById(`${path}-section`)
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }
+      }, 100)
     }
   }
 
-  const handleBackToCreation = () => {
-    setCurrentScreen('creation')
+  const handlePathCollapse = () => {
+    setExpandedPath(null)
+    
+    // Scroll back to path navigation
+    setTimeout(() => {
+      const element = document.getElementById('path-navigation')
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
+    }, 100)
   }
 
   const handleGenerateSong = async (selectedTrack?: any) => {
@@ -56,44 +72,11 @@ export default function CreationStudio() {
       uploadedImage
     })
     
-    // For now, just navigate back to creation
-    handleBackToCreation()
+    // For now, just collapse the expanded section
+    handlePathCollapse()
   }
 
-  // Render different screens based on current state
-  const renderCurrentScreen = () => {
-    switch (currentScreen) {
-      case 'singer':
-        return (
-          <SingerSelection 
-            onBack={handleBackToCreation}
-            lyrics={lyrics}
-            title={songTitle}
-          />
-        )
-      case 'custom':
-        return (
-          <CustomOptions 
-            onBack={handleBackToCreation}
-            lyrics={lyrics}
-            title={songTitle}
-          />
-        )
-      case 'music':
-        return (
-          <MusicLibrary 
-            onBack={handleBackToCreation}
-            lyrics={lyrics}
-            title={songTitle}
-            onGenerate={handleGenerateSong}
-          />
-        )
-      default:
-        return renderCreationScreen()
-    }
-  }
-
-  const renderCreationScreen = () => (
+  return (
     <div className="min-h-screen bg-bg-primary pb-24">
       {/* Header with Song Title */}
       <div className="sticky top-0 z-10 bg-bg-primary/95 backdrop-blur-sm border-b border-border-subtle">
@@ -150,16 +133,50 @@ export default function CreationStudio() {
         </div>
 
         {/* Path Navigation */}
-        <div className="animate-entrance-delay-2">
+        <div id="path-navigation" className="animate-entrance-delay-2">
           <PathNavigation 
-            onNavigate={handleNavigateToScreen}
+            onNavigate={handlePathExpand}
             isFormValid={isFormValid()}
             validationMessage={getValidationMessage()}
+            expandedPath={expandedPath}
           />
         </div>
+
+        {/* Expanded Path Sections */}
+        {expandedPath === 'singer' && (
+          <div id="singer-section" className="mt-8 animate-entrance">
+            <SingerSelection 
+              onBack={handlePathCollapse}
+              lyrics={lyrics}
+              title={songTitle}
+              isInlineMode={true}
+            />
+          </div>
+        )}
+
+        {expandedPath === 'custom' && (
+          <div id="custom-section" className="mt-8 animate-entrance">
+            <CustomOptions 
+              onBack={handlePathCollapse}
+              lyrics={lyrics}
+              title={songTitle}
+              isInlineMode={true}
+            />
+          </div>
+        )}
+
+        {expandedPath === 'music' && (
+          <div id="music-section" className="mt-8 animate-entrance">
+            <MusicLibrary 
+              onBack={handlePathCollapse}
+              lyrics={lyrics}
+              title={songTitle}
+              onGenerate={handleGenerateSong}
+              isInlineMode={true}
+            />
+          </div>
+        )}
       </div>
     </div>
   )
-
-  return renderCurrentScreen()
 } 

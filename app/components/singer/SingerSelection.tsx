@@ -8,9 +8,10 @@ interface SingerSelectionProps {
   onBack: () => void
   lyrics?: string
   title?: string
+  isInlineMode?: boolean
 }
 
-export default function SingerSelection({ onBack, lyrics, title }: SingerSelectionProps) {
+export default function SingerSelection({ onBack, lyrics, title, isInlineMode = false }: SingerSelectionProps) {
   const [selectedSinger, setSelectedSinger] = useState<string | null>(null)
   const [singers, setSingers] = useState<Singer[]>([])
   const [loading, setLoading] = useState(true)
@@ -120,9 +121,9 @@ export default function SingerSelection({ onBack, lyrics, title }: SingerSelecti
   }
 
   return (
-    <div className="min-h-screen bg-bg-primary">
+    <div className={isInlineMode ? "bg-bg-secondary rounded-2xl shadow-card" : "min-h-screen bg-bg-primary"}>
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-bg-primary/95 backdrop-blur-sm border-b border-border-subtle">
+      <div className={isInlineMode ? "px-6 py-4 border-b border-border-subtle" : "sticky top-0 z-10 bg-bg-primary/95 backdrop-blur-sm border-b border-border-subtle"}>
         <div className="flex items-center justify-between p-4">
           <button
             onClick={onBack}
@@ -332,8 +333,8 @@ export default function SingerSelection({ onBack, lyrics, title }: SingerSelecti
       </div>
 
       {/* Generate Button */}
-      <div className="fixed bottom-20 left-0 right-0 bg-bg-primary/95 backdrop-blur-sm border-t border-border-subtle">
-        <div className="px-4 py-4">
+      <div className={isInlineMode ? "px-6 py-4 border-t border-border-subtle" : "fixed bottom-20 left-0 right-0 bg-bg-primary/95 backdrop-blur-sm border-t border-border-subtle"}>
+        <div className={isInlineMode ? "" : "px-4 py-4"}>
           <button 
             onClick={handleGenerateSong}
             disabled={isGenerating || !selectedSinger || loading}
@@ -375,7 +376,7 @@ export default function SingerSelection({ onBack, lyrics, title }: SingerSelecti
       </div>
 
       {/* Spacing for fixed button */}
-      <div className="h-32"></div>
+      {!isInlineMode && <div className="h-32"></div>}
     </div>
   )
 } 

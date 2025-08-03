@@ -39,10 +39,10 @@ interface PathNavigationProps {
   onNavigate: (screen: 'singer' | 'custom' | 'music') => void
   isFormValid: boolean
   validationMessage?: string
+  expandedPath?: 'singer' | 'custom' | 'music' | null
 }
 
-export default function PathNavigation({ onNavigate, isFormValid, validationMessage }: PathNavigationProps) {
-  const [selectedPath, setSelectedPath] = useState<string | null>(null)
+export default function PathNavigation({ onNavigate, isFormValid, validationMessage, expandedPath }: PathNavigationProps) {
 
   const handlePathSelect = (pathId: string) => {
     if (!isFormValid) {
@@ -52,15 +52,13 @@ export default function PathNavigation({ onNavigate, isFormValid, validationMess
       }
       return
     }
-
-    setSelectedPath(pathId)
     
     // Add success haptic feedback for mobile
     if (typeof window !== 'undefined' && 'vibrate' in navigator) {
       navigator.vibrate(10)
     }
     
-    // Navigate to the selected screen
+    // Toggle the expanded path
     onNavigate(pathId as 'singer' | 'custom' | 'music')
   }
 
@@ -92,7 +90,7 @@ export default function PathNavigation({ onNavigate, isFormValid, validationMess
                 group relative flex flex-col items-center gap-3 p-6 rounded-3xl transition-all duration-300 touch-target
                 ${!isFormValid
                   ? 'bg-gray-600 cursor-not-allowed opacity-50'
-                  : selectedPath === path.id
+                  : expandedPath === path.id
                     ? 'bg-melody-gradient shadow-glow scale-105'
                     : 'bg-bg-secondary hover:bg-bg-accent hover:scale-105 shadow-card'
                 }
@@ -103,7 +101,7 @@ export default function PathNavigation({ onNavigate, isFormValid, validationMess
                 w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300
                 ${!isFormValid
                   ? 'bg-gray-500 text-gray-300'
-                  : selectedPath === path.id
+                  : expandedPath === path.id
                     ? 'bg-white/20 text-white'
                     : 'bg-melody-gradient text-white group-hover:scale-110'
                 }
@@ -117,7 +115,7 @@ export default function PathNavigation({ onNavigate, isFormValid, validationMess
                   text-lg font-semibold transition-colors
                   ${!isFormValid
                     ? 'text-gray-400'
-                    : selectedPath === path.id 
+                    : expandedPath === path.id 
                       ? 'text-white' 
                       : 'text-text-primary'
                   }
@@ -128,17 +126,17 @@ export default function PathNavigation({ onNavigate, isFormValid, validationMess
                   text-xs transition-colors
                   ${!isFormValid
                     ? 'text-gray-500'
-                    : selectedPath === path.id 
+                    : expandedPath === path.id 
                       ? 'text-white/80' 
                       : 'text-text-muted'
                   }
                 `}>
-                  {path.description}
+                  {expandedPath === path.id ? 'Expanded' : path.description}
                 </div>
               </div>
 
               {/* Selection indicator */}
-              {selectedPath === path.id && (
+              {expandedPath === path.id && (
                 <div className="absolute -top-2 -right-2 w-6 h-6 bg-white rounded-full flex items-center justify-center">
                   <div className="w-3 h-3 bg-melody-purple rounded-full"></div>
                 </div>
@@ -148,14 +146,7 @@ export default function PathNavigation({ onNavigate, isFormValid, validationMess
         ))}
       </div>
 
-      {/* Continue Button */}
-      {selectedPath && (
-        <div className="animate-slide-up flex justify-center pt-4">
-          <button className="btn-primary px-8 py-3 text-lg font-semibold">
-            Continue to {navigationPaths.find(p => p.id === selectedPath)?.label}
-          </button>
-        </div>
-      )}
+
     </div>
   )
 } 

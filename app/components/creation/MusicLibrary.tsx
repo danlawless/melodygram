@@ -9,11 +9,12 @@ interface MusicLibraryProps {
   lyrics?: string
   title?: string
   onGenerate?: (selectedTrack?: ReferenceTrack) => void
+  isInlineMode?: boolean
 }
 
 type LibraryTab = 'Library' | 'Used' | 'Mine'
 
-export default function MusicLibrary({ onBack, lyrics, title, onGenerate }: MusicLibraryProps) {
+export default function MusicLibrary({ onBack, lyrics, title, onGenerate, isInlineMode = false }: MusicLibraryProps) {
   const [activeTab, setActiveTab] = useState<LibraryTab>('Library')
   const [selectedGenre, setSelectedGenre] = useState<string>('')
   const [selectedMood, setSelectedMood] = useState<string>('')
@@ -81,9 +82,9 @@ export default function MusicLibrary({ onBack, lyrics, title, onGenerate }: Musi
   }
 
   return (
-    <div className="min-h-screen bg-bg-primary pb-24">
+    <div className={isInlineMode ? "bg-bg-secondary rounded-2xl shadow-card pb-6" : "min-h-screen bg-bg-primary pb-24"}>
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-bg-primary border-b border-border-subtle">
+      <div className={isInlineMode ? "px-6 py-4 border-b border-border-subtle" : "sticky top-0 z-10 bg-bg-primary border-b border-border-subtle"}>
         <button
           onClick={onBack}
           className="absolute top-4 left-4 p-3 rounded-full bg-bg-secondary hover:bg-bg-accent transition-colors"
@@ -235,7 +236,7 @@ export default function MusicLibrary({ onBack, lyrics, title, onGenerate }: Musi
       </div>
 
       {/* Generate Button */}
-      <div className="fixed bottom-20 left-0 right-0 p-4 bg-bg-primary border-t border-border-subtle">
+      <div className={isInlineMode ? "px-6 py-4 border-t border-border-subtle" : "fixed bottom-20 left-0 right-0 p-4 bg-bg-primary border-t border-border-subtle"}>
         <button
           onClick={handleGenerate}
           disabled={!selectedTrack}
