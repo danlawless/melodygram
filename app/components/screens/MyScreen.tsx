@@ -1,13 +1,17 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { User, Music, Download, Share2, Play, MoreVertical, ExternalLink, Eye, DollarSign, Search, Filter, Grid, List, Calendar, Clock, Video } from 'lucide-react'
+import { User, Music, Download, Share2, Play, MoreVertical, ExternalLink, Eye, DollarSign, Search, Filter, Grid, List, Calendar, Clock, Video, Settings } from 'lucide-react'
 import { songStorageService, SavedSong } from '../../services/songStorage'
 import VideoPlayer from '../player/VideoPlayer'
 import MiniVideoPlayer from '../player/MiniVideoPlayer'
 import VideoThumbnail from '../video/VideoThumbnail'
 
-export default function MyScreen() {
+interface MyScreenProps {
+  onProfileClick?: () => void
+}
+
+export default function MyScreen({ onProfileClick }: MyScreenProps) {
   const [mySongs, setMySongs] = useState<SavedSong[]>([])
   const [loading, setLoading] = useState(true)
   const [allJobs, setAllJobs] = useState<any[]>([])
@@ -242,28 +246,41 @@ export default function MyScreen() {
               </div>
             </div>
             
-            {/* View Toggle */}
-            <div className="flex items-center gap-2 bg-white/5 rounded-lg p-1">
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`p-2 rounded-md transition-all ${
-                  viewMode === 'grid' 
-                    ? 'bg-purple-500 text-white shadow-lg' 
-                    : 'text-gray-400 hover:text-white hover:bg-white/10'
-                }`}
-              >
-                <Grid className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                className={`p-2 rounded-md transition-all ${
-                  viewMode === 'list' 
-                    ? 'bg-purple-500 text-white shadow-lg' 
-                    : 'text-gray-400 hover:text-white hover:bg-white/10'
-                }`}
-              >
-                <List className="w-4 h-4" />
-              </button>
+            <div className="flex items-center gap-3">
+              {/* Edit Profile Button */}
+              {onProfileClick && (
+                <button
+                  onClick={onProfileClick}
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-medium hover:scale-105 transition-transform shadow-lg"
+                >
+                  <Settings className="w-4 h-4" />
+                  Edit Profile
+                </button>
+              )}
+              
+              {/* View Toggle */}
+              <div className="flex items-center gap-2 bg-white/5 rounded-lg p-1">
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`p-2 rounded-md transition-all ${
+                    viewMode === 'grid' 
+                      ? 'bg-purple-500 text-white shadow-lg' 
+                      : 'text-gray-400 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  <Grid className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`p-2 rounded-md transition-all ${
+                    viewMode === 'list' 
+                      ? 'bg-purple-500 text-white shadow-lg' 
+                      : 'text-gray-400 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  <List className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
 

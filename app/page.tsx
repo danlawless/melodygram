@@ -38,7 +38,7 @@ export default function Home() {
       case 'create':
         return <CreationStudio />
       case 'my':
-        return <MyScreen />
+        return <MyScreen onProfileClick={handleProfileClick} />
       case 'profile':
         return <ProfileScreen onBack={handleBackToMain} />
       case 'settings':
