@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { userProfileService, UserProfile, PaymentMethod, CreditPackage } from '../../services/userProfile'
 import { creditSystemService } from '../../services/creditSystem'
+import { useToast } from '../ui/Toast'
 
 interface ProfileScreenProps {
   onBack: () => void
@@ -26,6 +27,7 @@ interface ProfileScreenProps {
 type ActiveTab = 'profile' | 'credits' | 'payment' | 'billing'
 
 export default function ProfileScreen({ onBack }: ProfileScreenProps) {
+  const { showToast } = useToast()
   const [activeTab, setActiveTab] = useState<ActiveTab>('profile')
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -93,10 +95,18 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
       })
       
       setProfile(updatedProfile)
-      alert('Profile saved successfully! ✅')
+      showToast({
+        type: 'success',
+        title: 'Profile saved successfully!',
+        message: 'Your changes have been saved.'
+      })
     } catch (error) {
       console.error('Error saving profile:', error)
-      alert('Failed to save profile. Please try again.')
+      showToast({
+        type: 'error',
+        title: 'Failed to save profile',
+        message: 'Please try again.'
+      })
     } finally {
       setIsSaving(false)
     }
@@ -116,11 +126,19 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
       setCreditBalance(newBalance)
       
       setIsTopUpOpen(false)
-      alert(`Successfully purchased ${creditPackage.credits} credits! 🎉`)
+      showToast({
+        type: 'success',
+        title: 'Credits purchased!',
+        message: `Successfully added ${creditPackage.credits} credits to your account.`
+      })
       
     } catch (error) {
       console.error('Error purchasing credits:', error)
-      alert('Failed to purchase credits. Please try again.')
+      showToast({
+        type: 'error',
+        title: 'Purchase failed',
+        message: 'Failed to purchase credits. Please try again.'
+      })
     }
   }
 
@@ -137,13 +155,22 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
     
     setPaymentMethods([...paymentMethods, newPaymentMethod])
     setIsAddingPayment(false)
-    alert('Payment method added successfully! 💳')
+    showToast({
+      type: 'success',
+      title: 'Payment method added',
+      message: 'Your card has been successfully added.'
+    })
   }
 
   const handleRemovePaymentMethod = (paymentMethodId: string) => {
     if (confirm('Are you sure you want to remove this payment method?')) {
       userProfileService.removePaymentMethod(paymentMethodId)
       setPaymentMethods(paymentMethods.filter(pm => pm.id !== paymentMethodId))
+      showToast({
+        type: 'success',
+        title: 'Payment method removed',
+        message: 'Your card has been successfully removed.'
+      })
     }
   }
 
