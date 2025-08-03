@@ -104,7 +104,11 @@ In this moment, we're alive`
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowPromptInput(!showPromptInput)}
-            className="btn-ghost px-3 py-2 text-sm"
+            className={`px-3 py-2 text-sm rounded-lg border transition-colors ${
+              showPromptInput 
+                ? 'bg-melody-purple text-white border-melody-purple' 
+                : 'bg-bg-secondary text-text-secondary border-border-subtle hover:text-text-primary hover:border-melody-purple/30'
+            }`}
             title="Customize lyrics prompt"
           >
             ✨ Custom Prompt
@@ -138,12 +142,12 @@ In this moment, we're alive`
 
       {/* Custom Prompt Input */}
       {showPromptInput && (
-        <div className="space-y-3 p-4 bg-purple-50 border border-purple-200 rounded-xl">
+        <div className="space-y-4 p-4 bg-bg-secondary border border-border-subtle rounded-xl">
           <div className="flex items-center justify-between">
-            <h4 className="font-medium text-purple-900">Custom Lyrics Prompt</h4>
+            <h4 className="font-medium text-text-primary">Custom Lyrics Prompt</h4>
             <button
               onClick={() => setShowPromptInput(false)}
-              className="text-purple-600 hover:text-purple-800"
+              className="text-text-secondary hover:text-text-primary transition-colors"
             >
               ✕
             </button>
@@ -152,16 +156,16 @@ In this moment, we're alive`
             value={customPrompt}
             onChange={(e) => setCustomPrompt(e.target.value)}
             placeholder="Describe what you want your lyrics to be about... (e.g., 'Write a song about overcoming challenges and finding strength', 'Create lyrics about a summer road trip with friends', 'Write emotional lyrics about missing someone')"
-            className="w-full p-3 border border-purple-300 rounded-lg resize-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            rows={3}
+            className="w-full p-4 bg-bg-primary border border-border-subtle rounded-xl text-text-primary placeholder-text-secondary resize-none focus:ring-2 focus:ring-melody-purple/20 focus:border-melody-purple transition-colors"
+            rows={6}
           />
           <div className="flex items-center justify-between text-sm">
-            <p className="text-purple-600">
+            <p className="text-text-secondary">
               💡 Be specific about theme, mood, story, or emotions you want
             </p>
             <button
               onClick={() => setCustomPrompt('')}
-              className="text-purple-600 hover:text-purple-800 underline"
+              className="text-melody-purple hover:text-melody-purple/80 underline transition-colors"
             >
               Clear
             </button>
