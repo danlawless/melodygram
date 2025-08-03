@@ -40,11 +40,11 @@ export default function TitleInput({ title, onTitleChange, showValidation = fals
           value={title}
           onChange={(e) => onTitleChange(e.target.value)}
           placeholder="Enter your song title..."
-          className={`w-full p-4 bg-bg-primary border rounded-xl text-text-primary placeholder-text-secondary resize-none focus:ring-2 focus:ring-melody-purple/20 focus:border-melody-purple transition-colors text-lg font-medium ${
+          className={`w-full p-4 bg-bg-primary border rounded-xl text-text-primary placeholder-text-secondary focus:ring-2 focus:ring-melody-purple/20 focus:border-melody-purple transition-colors text-lg font-medium ${
             showValidation 
               ? title.trim() !== '' 
-                ? 'border-green-500 bg-green-50' 
-                : 'border-red-300 bg-red-50'
+                ? 'border-green-500 bg-bg-primary' 
+                : 'border-red-300 bg-bg-primary'
               : 'border-border-subtle'
           }`}
         />
@@ -57,7 +57,7 @@ export default function TitleInput({ title, onTitleChange, showValidation = fals
       
       {/* Validation message */}
       {showValidation && title.trim() === '' && (
-        <p className="text-red-500 text-sm">Please enter a song title</p>
+        <p className="text-red-600 text-sm">Please enter a song title</p>
       )}
     </div>
   )
