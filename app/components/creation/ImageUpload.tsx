@@ -188,7 +188,7 @@ export default function ImageUpload({ uploadedImage, onImageUpload, onImageGener
             <button
               onClick={handleGenerateAvatar}
               disabled={isGenerating}
-              className="btn-secondary flex items-center gap-2 px-4 py-2 text-sm"
+              className="flex items-center justify-center space-x-2 px-3 py-2 rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isGenerating ? (
                 <>
@@ -212,7 +212,7 @@ export default function ImageUpload({ uploadedImage, onImageUpload, onImageGener
           <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
         </div>
       )}
-
+    
       {/* Custom Prompt Input */}
       {showPromptInput && (
         <div className="space-y-6 p-4 bg-white/5 border border-white/10 rounded-xl">
