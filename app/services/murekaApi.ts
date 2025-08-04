@@ -13,6 +13,27 @@ const murekaApi = axios.create({
   },
 })
 
+// Rate limiting for Mureka API to prevent 429 errors
+class MurekaRateLimiter {
+  private lastCallTime = 0
+  private minInterval = 3000 // 3 seconds between calls
+
+  async waitForTurn(): Promise<void> {
+    const now = Date.now()
+    const timeSinceLastCall = now - this.lastCallTime
+    
+    if (timeSinceLastCall < this.minInterval) {
+      const waitTime = this.minInterval - timeSinceLastCall
+      console.log(`⏱️ Mureka rate limiting: waiting ${waitTime}ms before next API call`)
+      await new Promise(resolve => setTimeout(resolve, waitTime))
+    }
+    
+    this.lastCallTime = Date.now()
+  }
+}
+
+const murekaRateLimiter = new MurekaRateLimiter()
+
 // Types based on Mureka API structure
 export interface MurekaVocal {
   id: string
@@ -121,6 +142,9 @@ class MurekaApiService {
    */
   async generateLyrics(request: LyricsGenerationRequest): Promise<LyricsGenerationResponse> {
     try {
+      // Wait for rate limiter
+      await murekaRateLimiter.waitForTurn()
+      
       const response = await murekaApi.post<LyricsGenerationResponse>('/v1/lyrics/generate', {
         prompt: request.prompt,
         ...(request.style && { style: request.style }),
@@ -130,8 +154,19 @@ class MurekaApiService {
       })
       
       return response.data
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating lyrics with Mureka API:', error)
+      
+      // Handle rate limit errors specifically
+      if (error.response?.status === 429) {
+        throw new Error('Rate limit reached. Please wait a moment before generating again.')
+      }
+      
+      // Handle other API errors
+      if (error.response?.status >= 400) {
+        throw new Error(`API error (${error.response.status}): ${error.response.data?.message || 'Please try again.'}`)
+      }
+      
       throw new Error('Failed to generate lyrics. Please try again.')
     }
   }
@@ -289,30 +324,47 @@ class MurekaApiService {
   }
 
   /**
-   * Generate a song using Mureka API with length control
+   * Generate a song using Mureka API with proper lyrics/prompt separation
    */
   async generateSong(params: {
     lyrics: string
-    title?: string
-    style?: string
-    mood?: string
-    duration?: number
-    vocal_gender?: string
+    prompt?: string
+    model?: string
   }) {
     try {
-      console.log(`🎵 Starting Mureka song generation (target: ${params.duration || 'auto'}s)`)
+      // Wait for rate limiter
+      await murekaRateLimiter.waitForTurn()
+      
+      console.log(`🎵 Starting Mureka song generation`)
+      console.log(`🎵 Lyrics (${params.lyrics.length} chars):`, params.lyrics.substring(0, 100) + '...')
+      console.log(`🎵 Prompt:`, params.prompt)
 
-      const response = await murekaApi.post('/v1/song/generate', {
-        ...params,
-        // Add default parameters if not provided
-        duration: params.duration || 120, // Use provided duration or 2 minutes default
-        style: params.style || 'pop',
-        mood: params.mood || 'happy'
-      })
+      const requestBody: any = {
+        lyrics: params.lyrics, // Pure lyrics only
+        model: params.model || 'auto'
+      }
+
+      // Add prompt if provided
+      if (params.prompt) {
+        requestBody.prompt = params.prompt
+      }
+
+      const response = await murekaApi.post('/v1/song/generate', requestBody)
       
       return response.data
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating song:', error)
+      
+      // Handle rate limit errors specifically
+      if (error.response?.status === 429) {
+        throw new Error('Rate limit reached. Please wait a moment before generating another song.')
+      }
+      
+      // Handle other API errors
+      if (error.response?.status >= 400) {
+        throw new Error(`API error (${error.response.status}): ${error.response.data?.message || 'Please try again.'}`)
+      }
+      
       throw new Error('Failed to generate song. Please try again.')
     }
   }

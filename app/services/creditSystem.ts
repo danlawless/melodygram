@@ -1,11 +1,12 @@
 // Credit system for MelodyGram
 export interface CreditTransaction {
   id: string
-  type: 'purchase' | 'spent' | 'refund'
+  type: 'purchase' | 'spent' | 'refund' | 'subscription'
   amount: number
   description: string
   timestamp: string
   songId?: string // If credits were spent on a song
+  planId?: string // If credits came from a subscription plan
 }
 
 export interface UserCredits {
@@ -14,22 +15,22 @@ export interface UserCredits {
   lastUpdated: string
 }
 
-// Credit pricing tiers (matches SongLengthSelector)
-export const CREDIT_PRICING = {
-  10: { credits: 1, price: 0.50 },
-  20: { credits: 2, price: 1.00 },
-  30: { credits: 3, price: 1.50 },
-  60: { credits: 5, price: 2.50 },
-  120: { credits: 10, price: 5.00 },
-  240: { credits: 20, price: 10.00 }
-} as const
+// NEW CREDIT MODEL: 1 second = 1 credit, 60 seconds = $3.00 (so 1 credit = $0.05)
+// This means our cost is $1/minute to us, we charge $3/minute to users (3x markup)
+export const CREDIT_RATE = 0.05 // $0.05 per credit (1 credit = 1 second)
 
+// Credit calculation functions using the new 1s = 1 credit model
 export const getCreditsForLength = (seconds: number): number => {
-  return CREDIT_PRICING[seconds as keyof typeof CREDIT_PRICING]?.credits || Math.ceil(seconds / 10)
+  return seconds // 1 second = 1 credit
 }
 
 export const getPriceForLength = (seconds: number): number => {
-  return CREDIT_PRICING[seconds as keyof typeof CREDIT_PRICING]?.price || (seconds / 10) * 0.50
+  return seconds * CREDIT_RATE // 1 credit costs $0.05
+}
+
+// Helper function to explain pricing to users
+export const getPricingExplanation = (): string => {
+  return "Every 1 second of music generation = 1 credit. 60 seconds costs $3.00 to generate."
 }
 
 class CreditSystemService {
@@ -51,14 +52,14 @@ class CreditSystemService {
     try {
       const stored = localStorage.getItem(this.STORAGE_KEY)
       if (!stored) {
-        // Initialize new user with 3 free credits (enough for one 30s song)
+        // Initialize new user with 3 free credits (enough for testing)
         const initialCredits: UserCredits = {
           balance: 3,
           transactions: [{
             id: this.generateTransactionId(),
             type: 'purchase',
             amount: 3,
-            description: 'Welcome bonus - 3 free credits!',
+            description: 'Welcome bonus - 3 free credits to test!',
             timestamp: new Date().toISOString()
           }],
           lastUpdated: new Date().toISOString()
@@ -154,13 +155,43 @@ class CreditSystemService {
   }
 
   /**
-   * Get credit cost estimate for song length
+   * Add credits from subscription plan
+   */
+  addSubscriptionCredits(amount: number, planName: string, planId: string): void {
+    if (typeof window === 'undefined') {
+      return
+    }
+    
+    const userCredits = this.getUserCredits()
+    
+    const transaction: CreditTransaction = {
+      id: this.generateTransactionId(),
+      type: 'subscription',
+      amount: amount,
+      description: `Monthly credits from ${planName} plan`,
+      timestamp: new Date().toISOString(),
+      planId
+    }
+
+    const updatedCredits: UserCredits = {
+      balance: userCredits.balance + amount,
+      transactions: [transaction, ...userCredits.transactions],
+      lastUpdated: new Date().toISOString()
+    }
+
+    this.saveCredits(updatedCredits)
+    console.log(`🎵 Added ${amount} subscription credits from ${planName}. New balance: ${updatedCredits.balance}`)
+  }
+
+  /**
+   * Get credit cost estimate for song length with new pricing model
    */
   getCostEstimate(songLengthSeconds: number): {
     credits: number
     price: number
     hasCredits: boolean
     message: string
+    explanation: string
   } {
     const credits = getCreditsForLength(songLengthSeconds)
     const price = getPriceForLength(songLengthSeconds)
@@ -173,7 +204,8 @@ class CreditSystemService {
         credits,
         price,
         hasCredits: true,
-        message: `${credits} credits`
+        message: `${credits} credits`,
+        explanation: getPricingExplanation()
       }
     }
 
@@ -183,7 +215,8 @@ class CreditSystemService {
       hasCredits,
       message: hasCredits 
         ? `${credits} credits (${currentBalance - credits} remaining)`
-        : `Need ${credits - currentBalance} more credits`
+        : `Need ${credits - currentBalance} more credits`,
+      explanation: getPricingExplanation()
     }
   }
 

@@ -16,7 +16,7 @@ import {
   Star,
   Zap
 } from 'lucide-react'
-import { userProfileService, UserProfile, PaymentMethod, CreditPackage } from '../../services/userProfile'
+import { userProfileService, UserProfile, PaymentMethod, CreditPackage, SubscriptionPlan } from '../../services/userProfile'
 import { creditSystemService } from '../../services/creditSystem'
 import { useToast } from '../ui/Toast'
 import AvatarEditor from '../profile/AvatarEditor'
@@ -26,6 +26,154 @@ interface ProfileScreenProps {
 }
 
 type ActiveTab = 'profile' | 'credits' | 'payment' | 'billing'
+
+// Billing section component for subscription management
+function BillingSection() {
+  const [currentPlan, setCurrentPlan] = useState<SubscriptionPlan | null>(null)
+  const [hasActiveSubscription, setHasActiveSubscription] = useState(false)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    const plan = userProfileService.getCurrentPlan()
+    setCurrentPlan(plan)
+    setHasActiveSubscription(userProfileService.hasActiveSubscription())
+  }, [])
+
+  const formatDuration = (credits: number): string => {
+    if (credits < 60) return `${credits}s`
+    const minutes = Math.floor(credits / 60)
+    const seconds = credits % 60
+    return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`
+  }
+
+  const handleUpgrade = () => {
+    // Open pricing page in new tab
+    window.open('/pricing', '_blank')
+  }
+
+  const handleCancelSubscription = async () => {
+    if (!confirm('Are you sure you want to cancel your subscription? You\'ll keep your current credits until they expire.')) {
+      return
+    }
+
+    setLoading(true)
+    try {
+      userProfileService.cancelSubscription()
+      const updatedPlan = userProfileService.getCurrentPlan()
+      setCurrentPlan(updatedPlan)
+      setHasActiveSubscription(userProfileService.hasActiveSubscription())
+      alert('✅ Subscription cancelled successfully. You can continue using your current credits.')
+    } catch (error) {
+      console.error('Error cancelling subscription:', error)
+      alert('❌ Error cancelling subscription. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (!currentPlan) return null
+
+  return (
+    <div className="bg-bg-secondary/50 rounded-xl border border-border-subtle p-6">
+      <h2 className="text-xl font-semibold text-white mb-4">Current Plan</h2>
+      
+      <div className={`p-4 rounded-xl border mb-4 ${
+        hasActiveSubscription 
+          ? 'bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/20' 
+          : 'bg-white/5 border-white/10'
+      }`}>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+              hasActiveSubscription 
+                ? 'bg-gradient-to-r from-purple-500 to-pink-500' 
+                : 'bg-gray-500/20'
+            }`}>
+              <Crown className={`w-5 h-5 ${hasActiveSubscription ? 'text-white' : 'text-gray-400'}`} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="text-white font-semibold">{currentPlan.name} Plan</p>
+                {currentPlan.popular && (
+                  <span className="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded-full">
+                    POPULAR
+                  </span>
+                )}
+                {hasActiveSubscription && (
+                  <span className="text-xs bg-green-500/20 text-green-300 px-2 py-1 rounded-full">
+                    ACTIVE
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-gray-400">
+                {currentPlan.price === 0 ? 'Free' : `$${currentPlan.price}/month`} • 
+                {currentPlan.credits} credits • 
+                {formatDuration(currentPlan.credits)} of music
+              </p>
+            </div>
+          </div>
+          
+          {currentPlan.savings && (
+            <div className="text-green-400 text-sm font-medium text-right">
+              Save {currentPlan.savings}%
+            </div>
+          )}
+        </div>
+
+        {/* Plan Features */}
+        <div className="space-y-1 mb-4">
+          {currentPlan.features.slice(0, 3).map((feature, index) => (
+            <div key={index} className="flex items-center gap-2 text-sm text-gray-300">
+              <div className="w-1.5 h-1.5 bg-purple-400 rounded-full"></div>
+              {feature}
+            </div>
+          ))}
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex gap-2">
+          {currentPlan.id === 'free' || !hasActiveSubscription ? (
+            <button
+              onClick={handleUpgrade}
+              className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold py-3 rounded-lg hover:scale-105 transition-transform"
+            >
+              {currentPlan.id === 'free' ? 'Upgrade Plan' : 'Reactivate Plan'}
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={handleUpgrade}
+                className="flex-1 bg-white/10 text-white font-medium py-3 rounded-lg hover:bg-white/15 transition-colors"
+              >
+                Change Plan
+              </button>
+              <button
+                onClick={handleCancelSubscription}
+                disabled={loading}
+                className="px-4 py-3 bg-red-500/20 text-red-300 border border-red-500/30 rounded-lg hover:bg-red-500/30 transition-colors disabled:opacity-50"
+              >
+                {loading ? 'Cancelling...' : 'Cancel'}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Plan Benefits */}
+      <div className="text-sm text-gray-400">
+        <p className="font-medium text-white mb-2">✨ Plan Benefits:</p>
+        <ul className="space-y-1">
+          {currentPlan.features.map((feature, index) => (
+            <li key={index} className="flex items-center gap-2">
+              <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+              {feature}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  )
+}
 
 export default function ProfileScreen({ onBack }: ProfileScreenProps) {
   const { showToast } = useToast()
@@ -537,22 +685,8 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
 
         {activeTab === 'billing' && (
           <div className="space-y-6">
-            {/* Subscription Info */}
-            <div className="bg-bg-secondary/50 rounded-xl border border-border-subtle p-6">
-              <h2 className="text-xl font-semibold text-white mb-4">Subscription</h2>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-gray-500/20 rounded-lg flex items-center justify-center">
-                  <Crown className="w-5 h-5 text-gray-400" />
-                </div>
-                <div>
-                  <p className="text-white font-medium">Free Plan</p>
-                  <p className="text-sm text-gray-400">3 free credits to get started</p>
-                </div>
-              </div>
-              <button className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold py-3 rounded-lg hover:scale-105 transition-transform">
-                Upgrade to Premium
-              </button>
-            </div>
+            {/* Current Plan */}
+            <BillingSection />
 
             {/* Billing History */}
             <div className="bg-bg-secondary/50 rounded-xl border border-border-subtle p-6">

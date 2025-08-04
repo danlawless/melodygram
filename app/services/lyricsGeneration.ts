@@ -19,9 +19,9 @@ export interface LyricsGenerationResult {
 // Length-based lyrics guidelines
 const getLyricsGuideline = (seconds: number): string => {
   if (seconds <= 15) {
-    return "Create a very short, impactful verse (1-2 lines, hook only). Focus on a single powerful message or emotion."
+    return "Create a very short, impactful verse (1-2 lines, hook only). Focus on a single powerful message or emotion. Structure for immediate vocal delivery - no intro needed, jump straight into singing."
   } else if (seconds <= 30) {
-    return "Create a short verse with hook (3-4 lines total). Include a catchy hook and one supporting line."
+    return "Create a short verse with hook (3-4 lines total). Include a catchy hook and one supporting line. Structure for quick vocal start - minimal buildup, maximum singing content."
   } else if (seconds <= 60) {
     return "Create a verse-chorus structure (8-12 lines). Include verse, hook/chorus, and optional bridge."
   } else if (seconds <= 120) {
@@ -32,13 +32,20 @@ const getLyricsGuideline = (seconds: number): string => {
 }
 
 const getWordCountTarget = (seconds: number): { min: number, max: number } => {
-  // Rough estimate: 2-3 words per second of vocals
-  const wordsPerSecond = 2.5
-  const targetWords = Math.floor(seconds * wordsPerSecond)
+  // Precise word count targets based on duration
+  let targetWords
+  
+  if (seconds <= 10) targetWords = 10
+  else if (seconds <= 20) targetWords = 20
+  else if (seconds <= 30) targetWords = 30
+  else if (seconds <= 60) targetWords = 60
+  else if (seconds <= 120) targetWords = 120
+  else if (seconds <= 240) targetWords = 240
+  else targetWords = Math.floor(seconds * 2) // Fallback for custom durations
   
   return {
-    min: Math.max(1, targetWords - 10),  
-    max: targetWords + 10
+    min: Math.max(1, targetWords - 5),  // Allow small variance
+    max: targetWords + 5
   }
 }
 

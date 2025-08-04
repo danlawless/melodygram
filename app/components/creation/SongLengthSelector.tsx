@@ -7,14 +7,14 @@ interface SongLengthSelectorProps {
   showValidation?: boolean
 }
 
-// Song length options
+// Song length options with word count guidance
 const LENGTH_OPTIONS = [
-  { seconds: 10, label: '10s' },
-  { seconds: 20, label: '20s' },
-  { seconds: 30, label: '30s' },
-  { seconds: 60, label: '1m' },
-  { seconds: 120, label: '2m' },
-  { seconds: 240, label: '4m' }
+  { seconds: 10, label: '10s', words: 10, description: '10 words' },
+  { seconds: 20, label: '20s', words: 20, description: '20 words' },
+  { seconds: 30, label: '30s', words: 30, description: '30 words' },
+  { seconds: 60, label: '1m', words: 60, description: '60 words' },
+  { seconds: 120, label: '2m', words: 120, description: '120 words' },
+  { seconds: 240, label: '4m', words: 240, description: '240 words' }
 ]
 
 const formatTime = (seconds: number): string => {
@@ -66,9 +66,10 @@ export default function SongLengthSelector({
                 </div>
               )}
               
-              <div className="flex flex-col items-center space-y-2">
+              <div className="flex flex-col items-center space-y-1">
                 <Clock className="w-5 h-5" />
                 <span className="font-semibold text-lg">{option.label}</span>
+                <span className="text-xs opacity-80">({option.description})</span>
               </div>
             </button>
           )

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
   try {
-    const { lyrics, currentTitle, style, mood, genre } = await request.json()
+    const { lyrics, currentTitle, style, mood, genre, selectedGender } = await request.json()
 
     if (!lyrics || lyrics.trim().length < 10) {
       return NextResponse.json(
@@ -11,20 +11,37 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Construct a focused prompt for title generation
-    let prompt = `Generate a catchy, memorable song title (5 words or less) based on these lyrics:\n\n"${lyrics}"\n\n`
+    // Construct a focused prompt for title generation that emphasizes lyrics analysis
+    let prompt = `Please carefully read and analyze these song lyrics to create the perfect title:\n\n"${lyrics}"\n\n`
     
-    if (style) prompt += `Style: ${style}\n`
-    if (mood) prompt += `Mood: ${mood}\n`
+    prompt += `ANALYSIS INSTRUCTIONS:
+1. Read through the entire lyrics carefully
+2. Identify the main themes, emotions, and story
+3. Find the key phrases or concepts that stand out
+4. Consider the overall message and feeling of the song
+5. Create a title that captures the essence of what you analyzed\n\n`
+    
+    if (style) prompt += `Musical Style: ${style}\n`
+    if (mood) prompt += `Intended Mood: ${mood}\n`
     if (genre) prompt += `Genre: ${genre}\n`
-    if (currentTitle) prompt += `Current title: "${currentTitle}" (IMPORTANT: Generate a completely different title - do NOT repeat or reuse this title)\n`
+    if (selectedGender) {
+      if (selectedGender === 'male') {
+        prompt += `Vocal Perspective: Male voice - consider masculine themes and perspectives from the lyrics\n`
+      } else if (selectedGender === 'female') {
+        prompt += `Vocal Perspective: Female voice - consider feminine themes and perspectives from the lyrics\n`
+      }
+    }
+    if (currentTitle) prompt += `Current title: "${currentTitle}" (IMPORTANT: Create a completely different title - do NOT repeat or reuse this title)\n`
     
-    prompt += `\nRequirements:
+    prompt += `\nTITLE REQUIREMENTS:
 - Maximum 5 words
+- Must be based on your analysis of the provided lyrics
 - Catchy and memorable
-- Captures the essence of the lyrics
-- Suitable for the given style/mood
-- Return ONLY the title, no quotes or explanation`
+- Captures the core essence of what you found in the lyrics
+- Suitable for the given musical context
+- Return ONLY the title, no quotes or explanation
+
+Based on your analysis of the lyrics above, generate the perfect title:`
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -37,7 +54,7 @@ export async function POST(request: NextRequest) {
         messages: [
           {
             role: 'system',
-            content: 'You are a creative songwriter who specializes in crafting memorable, catchy song titles. Generate titles that are concise, emotional, and capture the essence of the lyrics.'
+            content: 'You are a creative songwriter who specializes in analyzing lyrics and crafting memorable, catchy song titles. Your job is to carefully read and analyze the provided lyrics to understand their themes, emotions, story, and key messages, then create a perfect title that captures the essence of those lyrics.'
           },
           {
             role: 'user',

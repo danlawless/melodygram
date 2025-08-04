@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { Zap, Loader2, Wand2, Music, Upload, User, Play, Clock } from 'lucide-react'
 import ImageUpload from './ImageUpload'
 import LyricsEditor from './LyricsEditor'
+import SongGeneration from './SongGeneration'
 import TitleInput from './TitleInput'
 import TipButton from '../ui/TipButton'
 import { lemonSliceApiService } from '../../services/lemonSliceApi'
@@ -52,6 +53,8 @@ export default function CreationStudio() {
   const [isTitleGenerating, setIsTitleGenerating] = useState(false)
   const [avatarVideoUrl, setAvatarVideoUrl] = useState<string | null>(null)
   const [songLength, setSongLength] = useState<number>(30) // Default song length
+  const [generatedSongUrl, setGeneratedSongUrl] = useState<string | null>(null)
+  const [isSongGenerating, setIsSongGenerating] = useState(false)
 
   // Session storage key
   const SESSION_KEY = 'melodygram_creation_session'
@@ -83,6 +86,11 @@ export default function CreationStudio() {
             setGeneratedImageUrl(session.generatedImageUrl); 
             restored.push('generated-image')
             console.log('🎨 Restored generated image URL:', session.generatedImageUrl?.substring(0, 50) + '...')
+          }
+          if (session.generatedSongUrl) {
+            setGeneratedSongUrl(session.generatedSongUrl);
+            restored.push('generated-song')
+            console.log('🎵 Restored generated song URL:', session.generatedSongUrl?.substring(0, 50) + '...')
           }
           if (session.uploadedImageUrl) {
             // Convert blob URL back to File object
@@ -149,6 +157,7 @@ export default function CreationStudio() {
           selectedVocal,
           songLength,
           generatedImageUrl,
+          generatedSongUrl,
           uploadedImageUrl,
           uploadedImageName: uploadedImage?.name || null,
           lastUpdated: new Date().toISOString()
@@ -172,7 +181,7 @@ export default function CreationStudio() {
       
       return () => clearTimeout(timeoutId)
     }
-  }, [lyrics, songTitle, selectedVocal, songLength, generatedImageUrl, uploadedImageUrl])
+  }, [lyrics, songTitle, selectedVocal, songLength, generatedImageUrl, generatedSongUrl, uploadedImageUrl])
 
   // Debug song length changes
   useEffect(() => {
@@ -199,7 +208,8 @@ export default function CreationStudio() {
            lyrics.trim() !== '' && 
            songLength > 0 &&
            hasImage &&
-           selectedVocal !== ''
+           selectedVocal !== '' &&
+           generatedSongUrl !== null  // Require a generated song
   }
 
   const handleVocalSelect = (vocalId: string) => {
@@ -247,6 +257,8 @@ export default function CreationStudio() {
       setSongTitle(result.title)
     } catch (error) {
       console.error('❌ Title auto-generation failed:', error)
+      // GPT-4o-mini has higher rate limits, so failures are less expected
+      // But still handle them gracefully without bothering the user
     } finally {
       setIsTitleGenerating(false)
     }
@@ -268,15 +280,15 @@ export default function CreationStudio() {
       } else {
         console.log('✋ Skipping auto-generation, title already exists:', currentTitle)
       }
-    }, 2000) // Wait 2 seconds after user stops typing
+    }, 1500) // Reduced from 2 seconds since GPT-4o-mini is faster and has higher limits
 
     return () => {
       console.log('🚫 Clearing title generation timeout')
       clearTimeout(timeoutId)
     }
-  }, [lyrics, selectedVocal, generateTitleFromLyrics]) // Keep dependencies stable
+  }, [lyrics, selectedVocal, generateTitleFromLyrics]) // Removed isSongGenerating since no rate limiting needed
 
-  const handleGenerateSong = async () => {
+  const handleGenerateMelodyGram = async () => {
     if (!isFormValid()) return
 
     // Reset avatar video URL when starting new generation
@@ -290,6 +302,7 @@ export default function CreationStudio() {
       lyrics: lyrics,
       vocalGender: selectedVocal as 'male' | 'female',
       imageUrl: generatedImageUrl || undefined,
+      audioUrl: generatedSongUrl || undefined, // Use pre-generated song
       createdAt: new Date().toISOString(),
       status: 'generating',
       plays: 0,
@@ -303,86 +316,10 @@ export default function CreationStudio() {
       
       // Save initial song to storage
       songStorageService.saveSong(newSong)
-      console.log('🎵 Song creation started:', songTitle)
+      console.log('🎬 Melody Gram creation started:', songTitle)
+      console.log('🎵 Using pre-generated song:', generatedSongUrl)
       
-      // Step 1: Generate song with Mureka MCP tools
-      console.log('🎤 Generating song with Mureka MCP tools...')
-      
-      // Create length-aware prompt for Mureka
-      let enhancedLyrics = lyrics
-      if (songLength > 0) {
-        const durationInstruction = createDurationInstruction(songLength)
-        enhancedLyrics = `${durationInstruction}\n\n${lyrics}`
-        console.log(`🎵 Enhanced lyrics with ${songLength}s duration target`)
-      }
-      
-      // Use MCP tool for song generation with length control
-      const songParams = {
-        lyrics: enhancedLyrics,
-        title: songTitle,
-        style: 'pop',
-        mood: selectedVocal === 'male' ? 'confident' : 'happy',
-        duration: songLength || 30, // Use selected length or default to 30s
-        vocal_gender: selectedVocal
-      }
-      
-      console.log(`🎵 Generating ${songLength}s song with MCP tools...`)
-      console.log('Song parameters:', songParams)
-      
-      // This will be handled by the MCP tools - the actual implementation
-      // is in the Mureka MCP server, not in our HTTP API
-      const songResponse = await murekaApiService.generateSong(songParams)
-      console.log('🎵 Song generation response:', songResponse)
-      
-      // Update progress
-      songStorageService.updateSong(songId, { progress: 30 })
-      
-      // Step 2: Poll for song completion
-      let songCompleted = false
-      let audioUrl = ''
-      let consecutiveFailures = 0
-      const maxFailures = 5
-      
-      while (!songCompleted && consecutiveFailures < maxFailures) {
-        await new Promise(resolve => setTimeout(resolve, 3000)) // Wait 3 seconds
-        
-        try {
-          // Check if songResponse has an id property, otherwise handle differently
-          if (songResponse && songResponse.id) {
-            const statusResponse = await murekaApiService.querySongTask(songResponse.id)
-            consecutiveFailures = 0 // Reset on successful API call
-            
-            console.log('🔄 Song status:', statusResponse.status)
-            songStorageService.updateSong(songId, { progress: 40 + (statusResponse.progress || 0) * 0.2 })
-            
-            if (statusResponse.status === 'completed' && statusResponse.audio_url) {
-              audioUrl = statusResponse.audio_url
-              songCompleted = true
-              console.log('✅ Song generation completed:', audioUrl)
-            } else if (statusResponse.status === 'failed' || statusResponse.status === 'error') {
-              throw new Error(`Song generation failed: ${statusResponse.message || 'Unknown error'}`)
-            }
-          } else {
-            // Handle direct response with audio URL (fallback)
-            if (songResponse && (songResponse.audio_url || songResponse.audioUrl)) {
-              audioUrl = songResponse.audio_url || songResponse.audioUrl
-              songCompleted = true
-              console.log('✅ Song generation completed immediately:', audioUrl)
-            } else {
-              throw new Error('No song ID or audio URL in response')
-            }
-          }
-        } catch (error) {
-          consecutiveFailures++
-          console.warn(`⚠️ Song status check failed (${consecutiveFailures}/${maxFailures}):`, error)
-          
-          if (consecutiveFailures >= maxFailures) {
-            throw new Error(`Song generation failed after ${maxFailures} attempts. Please try again.`)
-          }
-        }
-      }
-      
-      // Step 3: Create avatar with LemonSlice API
+      // Step 1: Create avatar with LemonSlice API using pre-generated song
       if (generatedImageUrl) {
         // Only create avatar if we have a generated image URL (not uploaded file)
         // LemonSlice API v2 requires public URLs for both image and audio
@@ -398,7 +335,7 @@ export default function CreationStudio() {
         }
         
         console.log('🎭 Using Image URL:', fixedImageUrl)
-        console.log('🎭 Audio URL:', audioUrl)
+        console.log('🎭 Audio URL:', generatedSongUrl)
         
         try {
           // COST PROTECTION: Estimate cost before proceeding (same as working test)
@@ -421,7 +358,7 @@ export default function CreationStudio() {
           
           const avatarResponse = await lemonSliceApiService.createAvatar({
             image: fixedImageUrl,
-            audio: audioUrl,
+            audio: generatedSongUrl!,
             title: songTitle, // Pass the song title
             songLength: songLength, // Pass song length for better generation
             model: 'V2.5', // Using V2.5 model (not V2.7)
@@ -490,7 +427,7 @@ export default function CreationStudio() {
         
         songStorageService.updateSong(songId, {
           status: 'completed',
-          audioUrl: audioUrl, // Save the audio URL
+          audioUrl: generatedSongUrl!, // Save the audio URL
           completedAt: new Date().toISOString(),
           progress: 100,
           genre: 'Pop',
@@ -642,20 +579,33 @@ export default function CreationStudio() {
           />
         </div>
 
-        {/* Title Input - Above Generate Button */}
+        {/* Song Generation - New section for Mureka */}
         <div className="animate-entrance-delay-5">
+          <SongGeneration
+            lyrics={lyrics}
+            songTitle={songTitle}
+            selectedVocal={selectedVocal}
+            songLength={songLength}
+            onSongGenerated={setGeneratedSongUrl}
+            onGenerationStateChange={setIsSongGenerating}
+            showValidation={true}
+          />
+        </div>
+
+        {/* Title Input - Above Generate Button */}
+        <div className="animate-entrance-delay-6">
           <TitleInput
             title={songTitle}
             onTitleChange={setSongTitle}
             lyrics={lyrics}
             selectedGender={selectedVocal}
             showValidation={true}
-            isAutoGenerating={isTitleGenerating}
+            isAutoGenerating={isTitleGenerating && !isSongGenerating}
           />
         </div>
 
-        {/* Generate Button */}
-        <div className="animate-entrance-delay-6">
+        {/* Generate Melody Gram Button */}
+        <div className="animate-entrance-delay-7">
           {/* Error Message */}
           {generationError && (
             <div className="mb-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
@@ -665,7 +615,7 @@ export default function CreationStudio() {
 
           <div className="text-center space-y-4">
             <button
-              onClick={handleGenerateSong}
+              onClick={handleGenerateMelodyGram}
               disabled={!isFormValid() || isGenerating}
               className={`w-full py-4 px-8 rounded-xl font-bold text-lg transition-all duration-300 ${
                 isFormValid() && !isGenerating
@@ -676,12 +626,12 @@ export default function CreationStudio() {
               {isGenerating ? (
                 <div className="flex items-center justify-center space-x-3">
                   <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  <span>Generating Your Song...</span>
+                  <span>Creating Melody Gram...</span>
                 </div>
               ) : (
                 <div className="flex items-center justify-center space-x-2">
                   <Zap className="w-6 h-6" />
-                  <span>Generate Song</span>
+                  <span>Generate Melody Gram</span>
                 </div>
               )}
             </button>
@@ -689,11 +639,12 @@ export default function CreationStudio() {
             {!isFormValid() && !isGenerating && (
               <div className="mt-3 text-center">
                 <p className="text-sm text-red-600 dark:text-red-400">
-                  {selectedVocal === '' && "Choose voice style • "}
-                  {!hasImage && "Upload an avatar • "}
-                  {songLength <= 0 && "Select a song length • "}
-                  {lyrics.trim() === '' && "Write lyrics • "}
-                  {songTitle.trim() === '' && "Add a song title"}
+                  {selectedVocal === '' && "Choose Voice Style • "}
+                  {!hasImage && "Upload an Avatar • "}
+                  {songLength <= 0 && "Select a Song Length • "}
+                  {lyrics.trim() === '' && "Write Lyrics • "}
+                  {songTitle.trim() === '' && "Add a Song Title • "}
+                  {generatedSongUrl === null && "Generate a Song"}
                 </p>
               </div>
             )}

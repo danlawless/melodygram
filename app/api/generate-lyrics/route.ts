@@ -54,7 +54,10 @@ STYLE & MOOD DIRECTION:
 - Consider ${genre} song structures and conventions
 
 IMPORTANT FORMATTING:
-- Use [Verse], [Chorus], [Bridge] markers for structure  
+${lengthInSeconds < 30 
+  ? '- NO structural markers ([Verse], [Chorus], [Bridge]) for this short song - just write flowing lyrics'
+  : '- Use [Verse], [Chorus], [Bridge] markers for structure'
+}
 - Keep lines concise and singable for ${genre} style
 - Focus on emotional impact that matches ${mood} feeling
 - Each line should flow naturally when sung in ${genre} style

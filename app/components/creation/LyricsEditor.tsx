@@ -16,6 +16,27 @@ interface LyricsEditorProps {
   showValidation?: boolean
 }
 
+// Get target word count based on song length
+const getTargetWordCount = (seconds: number): number => {
+  if (seconds <= 10) return 10
+  else if (seconds <= 20) return 20  
+  else if (seconds <= 30) return 30
+  else if (seconds <= 60) return 60
+  else if (seconds <= 120) return 120
+  else if (seconds <= 240) return 240
+  else return Math.floor(seconds * 2) // Fallback for custom durations
+}
+
+// Count words in lyrics (excluding [bracket] instructions for Mureka)
+const countWords = (text: string): number => {
+  if (text.trim().length === 0) return 0
+  
+  // Remove anything in [brackets] as these are Mureka instructions, not lyrics
+  const lyricsOnly = text.replace(/\[.*?\]/g, '')
+  
+  return lyricsOnly.trim().length === 0 ? 0 : lyricsOnly.trim().split(/\s+/).length
+}
+
 export default function LyricsEditor({ 
   lyrics, 
   onLyricsChange, 
@@ -34,6 +55,11 @@ export default function LyricsEditor({
   const [selectedStyle, setSelectedStyle] = useState<string>('pop')
   const [selectedMood, setSelectedMood] = useState<string>('uplifting')
 
+  // Word count tracking
+  const currentWordCount = countWords(lyrics)
+  const targetWordCount = songLength > 0 ? getTargetWordCount(songLength) : 0
+  const isOverLimit = currentWordCount > targetWordCount && targetWordCount > 0
+
   // Available options
   const styles = [
     'pop', 'rock', 'ballad', 'jazz', 'electronic', 'acoustic', 'classical',
@@ -44,6 +70,20 @@ export default function LyricsEditor({
     'happy', 'uplifting', 'energetic', 'romantic', 'calm', 'dreamy', 
     'melancholic', 'sad', 'intense', 'chill', 'mysterious', 'playful'
   ]
+
+  // Handle lyrics input with word count restriction
+  const handleLyricsChange = (value: string) => {
+    const wordCount = countWords(value)
+    
+    // Allow input if under limit, or if removing words (to allow editing)
+    if (targetWordCount === 0 || wordCount <= targetWordCount || wordCount < currentWordCount) {
+      onLyricsChange(value)
+    }
+    // If over limit, only allow if it's the same word count (editing existing words)
+    else if (wordCount === currentWordCount) {
+      onLyricsChange(value)
+    }
+  }
 
   const handleGenerateLyrics = async () => {
     if (songLength <= 0) {
@@ -326,29 +366,33 @@ export default function LyricsEditor({
       <div className="space-y-2">
         <textarea
           value={lyrics}
-          onChange={(e) => onLyricsChange(e.target.value)}
+          onChange={(e) => handleLyricsChange(e.target.value)}
           placeholder={songLength > 0 
-            ? `Write your ${formatTime(songLength)} song lyrics here... or click "Generate" for AI assistance`
+            ? `Write your ${formatTime(songLength)} song lyrics here (${targetWordCount} words max)... or click "Generate" for AI assistance`
             : "Select a song length first, then write your lyrics here..."
           }
           disabled={songLength <= 0}
           className={`w-full h-64 p-4 bg-white/5 backdrop-blur-sm border rounded-xl text-white placeholder-gray-400 resize-none focus:outline-none focus:ring-2 transition-all ${
             songLength <= 0 
               ? 'border-gray-600 focus:ring-gray-500 cursor-not-allowed opacity-50'
-              : 'border-white/10 focus:border-purple-500 focus:ring-purple-500/50'
+              : isOverLimit
+                ? 'border-red-500 focus:border-red-500 focus:ring-red-500/50'
+                : 'border-white/10 focus:border-purple-500 focus:ring-purple-500/50'
           }`}
           style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
-        />
+        />  
         
-        {/* Word count and length guidance */}
-        {lyrics.trim() && songLength > 0 && (
-          <div className="flex justify-between text-sm text-gray-400">
-            <span>
-              {lyrics.trim().split(/\s+/).filter(word => word.length > 0).length} words
-            </span>
-            <span>
-              Target: {Math.floor(songLength * 2.5)} words for {formatTime(songLength)}
-            </span>
+        {/* Word Count Display */}
+        {songLength > 0 && (
+          <div className="flex justify-between items-center text-sm">
+            <div className={`${isOverLimit ? 'text-red-400' : currentWordCount === targetWordCount ? 'text-green-400' : 'text-gray-400'}`}>
+              {currentWordCount} / {targetWordCount} words
+              {isOverLimit && <span className="ml-2 text-red-400">• Word limit reached</span>}
+              {currentWordCount === targetWordCount && <span className="ml-2 text-green-400">• Perfect!</span>}
+            </div>
+            <div className="text-gray-500 text-xs">
+              Target: {targetWordCount} words for {formatTime(songLength)}
+            </div>
           </div>
         )}
         

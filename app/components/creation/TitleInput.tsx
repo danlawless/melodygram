@@ -54,7 +54,8 @@ export default function TitleInput({
       onTitleChange(finalTitle)
     } catch (error) {
       console.error('Title generation failed:', error)
-      alert(error instanceof Error ? error.message : 'Failed to generate title. Please try again.')
+      // GPT-4o-mini is more reliable, so show a simpler error message
+      alert('Failed to generate title. Please try again.')
     } finally {
       setIsGenerating(false)
     }
