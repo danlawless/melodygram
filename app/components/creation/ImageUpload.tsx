@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useCallback, useRef, useEffect } from 'react'
-import { Upload, Image as ImageIcon, X, Sparkles, Loader2, User, Palette, Heart } from 'lucide-react'
+import { Upload, Image as ImageIcon, X, Sparkles, Loader2, User, Palette, Heart, MoreVertical, Trash2, Shield } from 'lucide-react'
 import TipButton from '../ui/TipButton'
 import { imageGenerationService } from '../../services/imageGeneration'
 
@@ -41,9 +41,11 @@ export default function ImageUpload({ uploadedImage, onImageUpload, onImageGener
   // Avatar history state
   const [avatarHistory, setAvatarHistory] = useState<GeneratedAvatar[]>([])
   const [currentAvatar, setCurrentAvatar] = useState<GeneratedAvatar | null>(null)
+  const [showHistoryMenu, setShowHistoryMenu] = useState(false)
 
   // File input reference  
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const historyMenuRef = useRef<HTMLDivElement>(null)
 
   // Session storage for avatar history
   const AVATAR_HISTORY_KEY = 'melodygram_avatar_history'
@@ -331,6 +333,20 @@ export default function ImageUpload({ uploadedImage, onImageUpload, onImageGener
       reader.readAsDataURL(file)
     }
   }, [onImageUpload])
+
+  // Handle click outside history menu
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (historyMenuRef.current && !historyMenuRef.current.contains(event.target as Node)) {
+        setShowHistoryMenu(false)
+      }
+    }
+
+    if (showHistoryMenu) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showHistoryMenu])
 
   const removeImage = () => {
     onImageUpload(null)
@@ -836,23 +852,68 @@ export default function ImageUpload({ uploadedImage, onImageUpload, onImageGener
           </div>
           
           <div className="flex items-center justify-between text-xs text-gray-500">
-            <span>Click avatars to switch. Heart (💗) favorites to protect from deletion.</span>
+            <span>Click avatars to switch. 💗 favorites.</span>
             {avatarHistory.length >= 3 && (
-              <button
-                onClick={() => {
-                  const confirmed = confirm('Clear avatar history? This will free up storage space.')
-                  if (confirmed) {
-                    setAvatarHistory([])
-                    setCurrentAvatar(null)
-                    localStorage.removeItem(AVATAR_HISTORY_KEY)
-                    console.log('🧹 Avatar history cleared')
-                  }
-                }}
-                className="text-red-400 hover:text-red-300 underline"
-                title="Clear history to free up storage space"
-              >
-                Clear History
-              </button>
+              <div className="relative" ref={historyMenuRef}>
+                <button
+                  onClick={() => setShowHistoryMenu(!showHistoryMenu)}
+                  className="flex items-center space-x-1 text-gray-400 hover:text-gray-300 transition-colors"
+                  title="Manage avatar history"
+                >
+                  <MoreVertical className="w-4 h-4" />
+                  <span>Manage</span>
+                </button>
+                
+                {/* Integrated History Management Dropdown */}
+                {showHistoryMenu && (
+                  <div className="absolute right-0 top-6 mt-1 w-56 bg-gray-800/95 backdrop-blur-md border border-gray-600/50 rounded-lg shadow-xl z-50">
+                    <div className="p-2">
+                      <div className="text-xs text-gray-400 mb-2 px-2">Avatar History ({avatarHistory.length})</div>
+                      
+                      {/* Clear non-favorites */}
+                      {avatarHistory.some(avatar => !avatar.favorite) && (
+                        <button
+                          onClick={() => {
+                            const favoritesOnly = avatarHistory.filter(avatar => avatar.favorite)
+                            setAvatarHistory(favoritesOnly)
+                            localStorage.setItem(AVATAR_HISTORY_KEY, JSON.stringify(favoritesOnly))
+                            console.log(`🧹 Cleared ${avatarHistory.length - favoritesOnly.length} non-favorite avatars`)
+                            setShowHistoryMenu(false)
+                          }}
+                          className="w-full flex items-center space-x-2 px-2 py-2 text-left text-sm text-amber-400 hover:bg-gray-700/50 rounded transition-colors"
+                        >
+                          <Shield className="w-4 h-4" />
+                          <span>Keep favorites only</span>
+                        </button>
+                      )}
+                      
+                      {/* Clear all */}
+                      <button
+                        onClick={() => {
+                          setAvatarHistory([])
+                          setCurrentAvatar(null)
+                          localStorage.removeItem(AVATAR_HISTORY_KEY)
+                          console.log('🧹 Avatar history cleared completely')
+                          setShowHistoryMenu(false)
+                        }}
+                        className="w-full flex items-center space-x-2 px-2 py-2 text-left text-sm text-red-400 hover:bg-gray-700/50 rounded transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        <span>Clear all history</span>
+                      </button>
+                      
+                      <div className="border-t border-gray-600/30 mt-2 pt-2">
+                        <button
+                          onClick={() => setShowHistoryMenu(false)}
+                          className="w-full px-2 py-1 text-xs text-gray-500 hover:text-gray-400 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>
