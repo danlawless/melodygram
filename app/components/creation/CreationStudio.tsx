@@ -6,6 +6,7 @@ import ImageUpload from './ImageUpload'
 import LyricsEditor from './LyricsEditor'
 import SongGeneration from './SongGeneration'
 import TitleInput from './TitleInput'
+import FinalPreview from './FinalPreview'
 import TipButton from '../ui/TipButton'
 import { lemonSliceApiService } from '../../services/lemonSliceApi'
 import { songStorageService, SavedSong } from '../../services/songStorage'
@@ -604,8 +605,23 @@ export default function CreationStudio() {
           />
         </div>
 
+        {/* Final Preview Section */}
+        {isFormValid() && (
+          <div className="animate-entrance-delay-7">
+            <FinalPreview
+              uploadedImageUrl={uploadedImageUrl}
+              generatedImageUrl={generatedImageUrl}
+              songTitle={songTitle}
+              songLength={songLength}
+              selectedVocal={selectedVocal}
+              generatedSongUrl={generatedSongUrl}
+              lyrics={lyrics}
+            />
+          </div>
+        )}
+
         {/* Generate Melody Gram Button */}
-        <div className="animate-entrance-delay-7">
+        <div className="animate-entrance-delay-8">
           {/* Error Message */}
           {generationError && (
             <div className="mb-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
