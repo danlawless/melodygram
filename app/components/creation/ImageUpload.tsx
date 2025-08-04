@@ -269,6 +269,12 @@ export default function ImageUpload({ uploadedImage, onImageUpload, onImageGener
     if (onImageGenerated) {
       onImageGenerated(avatar.imageUrl)
     }
+    
+    // Find the index of the selected avatar and update parent navigation state
+    const selectedIndex = avatarHistory.findIndex(a => a.id === avatar.id)
+    if (onHistoryUpdate && selectedIndex !== -1) {
+      onHistoryUpdate(avatarHistory, selectedIndex)
+    }
   }
 
   // Sync external props with internal preview state

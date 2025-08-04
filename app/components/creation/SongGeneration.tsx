@@ -584,6 +584,12 @@ export default function SongGeneration({
       onVocalChange(song.selectedVocal)
     }
     
+    // Find the index of the selected song and update parent navigation state
+    const selectedIndex = generationHistory.findIndex(s => s.audioUrl === song.audioUrl)
+    if (onHistoryUpdate && selectedIndex !== -1) {
+      onHistoryUpdate(generationHistory, selectedIndex)
+    }
+    
     // Calculate and notify generation number
     const generationNumber = generationHistory.length - generationHistory.findIndex(s => s.audioUrl === song.audioUrl)
     if (onGenerationInfoChange) {
