@@ -13,6 +13,8 @@ interface FinalPreviewProps {
   songLength: number
   selectedVocal: string
   generatedSongUrl?: string | null
+  currentGenerationNumber?: number
+  totalGenerations?: number
   
   // Lyrics preview
   lyrics: string
@@ -25,6 +27,8 @@ export default function FinalPreview({
   songLength,
   selectedVocal,
   generatedSongUrl,
+  currentGenerationNumber,
+  totalGenerations,
   lyrics
 }: FinalPreviewProps) {
   const [isPlaying, setIsPlaying] = useState(false)
@@ -237,10 +241,15 @@ export default function FinalPreview({
                 <div className="w-8 h-8 bg-green-500/20 rounded-full flex items-center justify-center">
                   <Music className="w-4 h-4 text-green-400" />
                 </div>
-                <div>
-                  <p className="text-white font-medium text-sm">Preview Audio</p>
-                  <p className="text-gray-400 text-xs">Click to preview your song</p>
-                </div>
+                                 <div>
+                   <p className="text-white font-medium text-sm">Preview Audio</p>
+                   <p className="text-gray-400 text-xs">
+                     {currentGenerationNumber && totalGenerations 
+                       ? `Generation ${currentGenerationNumber} of ${totalGenerations} • Click to preview`
+                       : 'Click to preview your song'
+                     }
+                   </p>
+                 </div>
               </div>
               
               <button

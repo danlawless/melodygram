@@ -28,6 +28,7 @@ interface SongGenerationProps {
   songLength: number
   onSongGenerated?: (audioUrl: string) => void
   onGenerationStateChange?: (isGenerating: boolean) => void
+  onGenerationInfoChange?: (generationNumber: number, totalCount: number) => void
   showValidation?: boolean
 }
 
@@ -46,6 +47,7 @@ export default function SongGeneration({
   songLength,
   onSongGenerated,
   onGenerationStateChange,
+  onGenerationInfoChange,
   showValidation = false 
 }: SongGenerationProps) {
   const [isGenerating, setIsGenerating] = useState(false)
@@ -73,6 +75,11 @@ export default function SongGeneration({
             const mostRecentSong = songs[0]
             setGeneratedSong(mostRecentSong)
             setDuration(mostRecentSong.targetDuration)
+            
+            // Notify parent about current generation (most recent is #1)
+            if (onGenerationInfoChange) {
+              onGenerationInfoChange(1, songs.length)
+            }
           }
         }
       } catch (error) {
@@ -240,9 +247,14 @@ export default function SongGeneration({
         setGenerationHistory(updatedHistory)
         saveToSession(updatedHistory)
         
-        // Notify parent component
+        // Notify parent component about new generation
         if (onSongGenerated) {
           onSongGenerated(audioUrl)
+        }
+        
+        // Notify parent about generation info (new song is generation #1)
+        if (onGenerationInfoChange) {
+          onGenerationInfoChange(1, updatedHistory.length)
         }
         
         setGenerationStatus('')
@@ -387,7 +399,13 @@ export default function SongGeneration({
       onSongGenerated(song.audioUrl)
     }
     
-    console.log('🔄 Switched to generation:', song.createdAt, 'URL:', song.audioUrl?.substring(0, 50) + '...')
+    // Calculate and notify generation number
+    const generationNumber = generationHistory.length - generationHistory.findIndex(s => s.audioUrl === song.audioUrl)
+    if (onGenerationInfoChange) {
+      onGenerationInfoChange(generationNumber, generationHistory.length)
+    }
+    
+    console.log('🔄 Switched to generation:', generationNumber, 'URL:', song.audioUrl?.substring(0, 50) + '...')
   }
 
   const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {

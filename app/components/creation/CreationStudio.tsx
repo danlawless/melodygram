@@ -56,6 +56,8 @@ export default function CreationStudio() {
   const [songLength, setSongLength] = useState<number>(30) // Default song length
   const [generatedSongUrl, setGeneratedSongUrl] = useState<string | null>(null)
   const [isSongGenerating, setIsSongGenerating] = useState(false)
+  const [currentGenerationNumber, setCurrentGenerationNumber] = useState<number>(0)
+  const [totalGenerations, setTotalGenerations] = useState<number>(0)
 
   // Session storage key
   const SESSION_KEY = 'melodygram_creation_session'
@@ -219,6 +221,12 @@ export default function CreationStudio() {
     if (typeof window !== 'undefined' && 'vibrate' in navigator) {
       navigator.vibrate(10)
     }
+  }
+
+  // Handle generation info updates from SongGeneration component
+  const handleGenerationInfoChange = (generationNumber: number, totalCount: number) => {
+    setCurrentGenerationNumber(generationNumber)
+    setTotalGenerations(totalCount)
   }
 
   // Auto-generate title when lyrics change (with debounce)
@@ -589,6 +597,7 @@ export default function CreationStudio() {
             songLength={songLength}
             onSongGenerated={setGeneratedSongUrl}
             onGenerationStateChange={setIsSongGenerating}
+            onGenerationInfoChange={handleGenerationInfoChange}
             showValidation={true}
           />
         </div>
@@ -615,6 +624,8 @@ export default function CreationStudio() {
               songLength={songLength}
               selectedVocal={selectedVocal}
               generatedSongUrl={generatedSongUrl}
+              currentGenerationNumber={currentGenerationNumber}
+              totalGenerations={totalGenerations}
               lyrics={lyrics}
             />
           </div>
