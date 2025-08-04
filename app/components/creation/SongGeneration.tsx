@@ -277,10 +277,11 @@ export default function SongGeneration({
           audio = new Audio(generatedSong.audioUrl)
           
           audio.addEventListener('ended', () => {
+            audio.currentTime = 0 // Reset to beginning for replay
             audio.volume = 1.0 // Reset volume when ended
             setIsPlaying(false)
             setCurrentTime(0)
-            console.log('🎵 Audio playback ended')
+            console.log('🎵 Audio playback ended, ready for replay')
           })
 
           audio.addEventListener('error', (e) => {
@@ -329,10 +330,11 @@ export default function SongGeneration({
             // Auto-pause when reaching target duration
             if (currentTime >= targetDuration) {
               audio.pause()
+              audio.currentTime = 0 // Reset to beginning for replay
               audio.volume = 1.0 // Reset volume for next play
               setIsPlaying(false)
-              setCurrentTime(targetDuration)
-              console.log('🎵 Auto-paused at target duration with fade-in/out:', targetDuration + 's')
+              setCurrentTime(0) // Show 0:00 on UI
+              console.log('🎵 Auto-paused at target duration with fade-in/out, ready for replay:', targetDuration + 's')
             } else {
               setCurrentTime(currentTime)
             }
@@ -341,6 +343,13 @@ export default function SongGeneration({
           setAudioElement(audio)
         }
 
+        // If we're at or near the end, reset to beginning for replay
+        if (audio.currentTime >= generatedSong.targetDuration - 0.1) {
+          audio.currentTime = 0
+          setCurrentTime(0)
+          console.log('🎵 Resetting to beginning for replay')
+        }
+        
         audio.volume = 0.0 // Start at 0 volume for smooth fade-in
         await audio.play()
         setIsPlaying(true)
@@ -455,7 +464,7 @@ export default function SongGeneration({
             <button
               onClick={handlePlayPause}
               className="w-12 h-12 bg-green-500/20 hover:bg-green-500/30 rounded-full flex items-center justify-center transition-colors border border-green-500/30"
-              title={isPlaying ? 'Pause' : 'Play'}
+              title={isPlaying ? 'Pause' : (currentTime === 0 && !isPlaying ? 'Play' : 'Replay')}
             >
               {isPlaying ? (
                 <Pause className="w-6 h-6 text-green-400" />
