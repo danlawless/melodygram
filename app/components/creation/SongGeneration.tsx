@@ -124,7 +124,7 @@ export default function SongGeneration({
 
       // Clean lyrics for short songs - remove [brackets] which are just instructions
       let cleanedLyrics = lyrics
-      if (songLength < 30) {
+      if (songLength <= 30) {
         cleanedLyrics = lyrics.replace(/\[.*?\]/g, '').trim()
         console.log('🎵 Removed brackets from lyrics for short song:', cleanedLyrics.length, 'chars vs', lyrics.length, 'original')
       }
@@ -136,12 +136,12 @@ export default function SongGeneration({
         const durationInstruction = createDurationInstruction(songLength)
         
         // For short songs, emphasize getting straight to vocals AND wrapping up quickly
-        const vocalStartInstruction = songLength < 30 
+        const vocalStartInstruction = songLength <= 30 
           ? '. IMPORTANT: Start vocals immediately with minimal or no instrumental intro. Jump straight into singing the lyrics within the first 1-2 seconds. CRITICAL: End the song promptly after the lyrics finish - no extended instrumental outro or fade. Maximize vocal content, minimize instrumental sections at both start AND end. NOTE: Any structural markers like [Verse] or [Chorus] have been removed from the lyrics to keep them clean and flowing.'
           : ''
         
         prompt = `${durationInstruction}. Style: pop, ${selectedVocal === 'male' ? 'confident male vocal' : 'happy female vocal'}. Use ONLY the provided lyrics, do not add extra content${vocalStartInstruction}`
-        console.log(`🎵 Created prompt with ${songLength}s duration instructions${songLength < 30 ? ' + quick start/end + clean lyrics' : ''}`)
+        console.log(`🎵 Created prompt with ${songLength}s duration instructions${songLength <= 30 ? ' + quick start/end + clean lyrics' : ''}`)
       }
       
       console.log('🎵 Generating song with Mureka...')

@@ -54,7 +54,7 @@ STYLE & MOOD DIRECTION:
 - Consider ${genre} song structures and conventions
 
 IMPORTANT FORMATTING:
-${lengthInSeconds < 30 
+${lengthInSeconds <= 30 
   ? '- NO structural markers ([Verse], [Chorus], [Bridge]) for this short song - just write flowing lyrics'
   : '- Use [Verse], [Chorus], [Bridge] markers for structure'
 }
