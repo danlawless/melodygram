@@ -631,7 +631,7 @@ export default function CreationStudio() {
               ) : (
                 <div className="flex items-center justify-center space-x-2">
                   <Zap className="w-6 h-6" />
-                  <span>Generate Melody Gram</span>
+                  <span>Generate MelodyGram</span>
                 </div>
               )}
             </button>
