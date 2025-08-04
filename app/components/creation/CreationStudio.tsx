@@ -74,10 +74,9 @@ export default function CreationStudio() {
             hasTitle: !!session.songTitle,
             hasVocal: !!session.selectedVocal,
             songLength: session.songLength,
-            hasGeneratedImageUrl: !!session.generatedImageUrl,
-            hasUploadedImageUrl: !!session.uploadedImageUrl,
-            generatedImageUrl: session.generatedImageUrl ? session.generatedImageUrl.substring(0, 50) + '...' : null,
-            uploadedImageUrl: session.uploadedImageUrl ? session.uploadedImageUrl.substring(0, 50) + '...' : null
+            hasGeneratedImage: !!session.hasGeneratedImage,
+            hasUploadedImage: !!session.hasUploadedImage,
+            storageOptimized: true
           })
           
           let restored = []
@@ -85,43 +84,30 @@ export default function CreationStudio() {
           if (session.songTitle) { setSongTitle(session.songTitle); restored.push('title') }
           if (session.selectedVocal) { setSelectedVocal(session.selectedVocal); restored.push('vocal') }
           if (session.songLength) { setSongLength(session.songLength); restored.push('length') }
-          if (session.generatedImageUrl) { 
-            // Check if the URL is expired (DALL-E URLs have expiration parameters)
+                    // Handle both old format (with full URLs) and new format (boolean flags)
+          if (session.generatedImageUrl && typeof session.generatedImageUrl === 'string') {
+            // Old format - check if URL is still valid but don't restore to save space
             const isExpiredDalleUrl = session.generatedImageUrl.includes('blob.core.windows.net') && 
                                     session.generatedImageUrl.includes('se=')
             
             if (isExpiredDalleUrl) {
-              console.log('🔴 Expired DALL-E URL detected, clearing generated image from session')
-              // Don't restore expired URLs
+              console.log('🔴 Found expired DALL-E URL in old session format, clearing...')
             } else {
-              setGeneratedImageUrl(session.generatedImageUrl); 
-              restored.push('generated-image')
-              console.log('🎨 Restored generated image URL:', session.generatedImageUrl?.substring(0, 50) + '...')
+              console.log('🎨 Found generated image in old session format, not restoring to save storage space')
             }
+          } else if (session.hasGeneratedImage) {
+            console.log('🎨 Session had generated image, but not restored to save storage space')
           }
           if (session.generatedSongUrl) {
             setGeneratedSongUrl(session.generatedSongUrl);
             restored.push('generated-song')
             console.log('🎵 Restored generated song URL:', session.generatedSongUrl?.substring(0, 50) + '...')
           }
-          if (session.uploadedImageUrl) {
-            // Convert blob URL back to File object
-            try {
-              fetch(session.uploadedImageUrl)
-                .then(res => res.blob())
-                .then(blob => {
-                  const fileName = session.uploadedImageName || 'restored-image.png'
-                  const file = new File([blob], fileName, { type: blob.type })
-                  setUploadedImage(file)
-                  console.log('📸 Restored uploaded image from blob URL:', fileName)
-                })
-                .catch(error => {
-                  console.error('Failed to restore uploaded image from blob URL:', error)
-                })
-              restored.push('uploaded-image')
-            } catch (error) {
-              console.error('Failed to restore uploaded image:', error)
-            }
+          // Handle both old format (with blob URLs) and new format (boolean flags)
+          if (session.uploadedImageUrl && typeof session.uploadedImageUrl === 'string') {
+            console.log('📸 Found uploaded image in old session format, not restoring to save storage space')
+          } else if (session.hasUploadedImage) {
+            console.log('📸 Session had uploaded image, but not restored to save storage space')
           }
           
           if (restored.length > 0) {
@@ -173,9 +159,10 @@ export default function CreationStudio() {
           songTitle,
           selectedVocal,
           songLength,
-          generatedImageUrl: cleanGeneratedImageUrl,
+          // Don't store full base64 images or blob URLs in session to avoid quota issues
+          hasGeneratedImage: !!cleanGeneratedImageUrl,
           generatedSongUrl,
-          uploadedImageUrl,
+          hasUploadedImage: !!uploadedImageUrl,
           uploadedImageName: uploadedImage?.name || null,
           lastUpdated: new Date().toISOString()
         }
@@ -184,12 +171,11 @@ export default function CreationStudio() {
           localStorage.setItem(SESSION_KEY, JSON.stringify(session))
           console.log('💾 Saved creation session:', {
             songLengthSeconds: songLength,
-            hasGeneratedImage: !!generatedImageUrl,
+            hasGeneratedImage: !!cleanGeneratedImageUrl,
             hasUploadedImage: !!uploadedImageUrl,
-            generatedImageUrl: generatedImageUrl ? generatedImageUrl.substring(0, 50) + '...' : null,
-            uploadedImageUrl: uploadedImageUrl ? uploadedImageUrl.substring(0, 50) + '...' : null,
             lyricsCharCount: lyrics?.length || 0,
-            titleCharCount: songTitle?.length || 0
+            titleCharCount: songTitle?.length || 0,
+            storageOptimized: true
           })
         } catch (error) {
           console.error('Failed to save session:', error)
@@ -314,6 +300,43 @@ export default function CreationStudio() {
   const handleGenerateMelodyGram = async () => {
     if (!isFormValid()) return
 
+    // =============== COMPREHENSIVE GENERATE BUTTON LOGGING ===============
+    const generateContext = {
+      timestamp: new Date().toISOString(),
+      buttonType: 'MELODYGRAM_GENERATION',
+      user: {
+        sessionId: Date.now(), // Simple session identifier
+      },
+      inputData: {
+        songTitle: songTitle,
+        lyrics: lyrics,
+        selectedVocal: selectedVocal,
+        songLength: songLength,
+        uploadedImage: uploadedImage ? 'PROVIDED' : 'NOT_PROVIDED',
+        generatedImageUrl: generatedImageUrl ? 'PROVIDED' : 'NOT_PROVIDED',
+        generatedSongUrl: generatedSongUrl ? 'PROVIDED' : 'NOT_PROVIDED',
+        currentGenerationNumber: currentGenerationNumber,
+        totalGenerations: totalGenerations
+      },
+      formValidation: {
+        isFormValid: isFormValid(),
+        songTitleLength: songTitle.length,
+        lyricsLength: lyrics.length,
+        hasAudio: !!generatedSongUrl,
+        hasImage: !!(uploadedImage || generatedImageUrl)
+      },
+      systemContext: {
+        component: 'CreationStudio',
+        handler: 'handleGenerateMelodyGram',
+        userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'unknown'
+      }
+    }
+
+    console.log('🎬 =================== MELODYGRAM GENERATE BUTTON CLICKED ===================')
+    console.log('🎬 FULL CONTEXT:', JSON.stringify(generateContext, null, 2))
+    console.log('🎬 ========================================================================')
+    // =========================================================================
+
     // Reset avatar video URL when starting new generation
     setAvatarVideoUrl(null)
 
@@ -332,6 +355,8 @@ export default function CreationStudio() {
       progress: 0,
       songLength: songLength // Add song length to the new song
     }
+
+    console.log('🎬 Created song object for storage:', JSON.stringify(newSong, null, 2))
 
     try {
       setIsGenerating(true)
@@ -379,7 +404,7 @@ export default function CreationStudio() {
 
           console.log('🎬 Starting avatar creation...')
           
-          const avatarResponse = await lemonSliceApiService.createAvatar({
+          const lemonSliceParams = {
             image: fixedImageUrl,
             audio: generatedSongUrl!,
             title: songTitle, // Pass the song title
@@ -389,7 +414,13 @@ export default function CreationStudio() {
             animation_style: 'autoselect',
             expressiveness: 0.8,
             crop_head: false
-          })
+          }
+          
+          console.log('🎭 =================== LEMONSLICE API CALL PARAMS ===================')
+          console.log('🎭 PARAMETERS SENT TO LEMONSLICE:', JSON.stringify(lemonSliceParams, null, 2))
+          console.log('🎭 ================================================================')
+          
+          const avatarResponse = await lemonSliceApiService.createAvatar(lemonSliceParams)
           
           console.log('✅ Avatar job created:', avatarResponse.job_id)
           
@@ -614,6 +645,8 @@ export default function CreationStudio() {
             onGenerationInfoChange={handleGenerationInfoChange}
             onLyricsChange={setLyrics}
             onTitleChange={setSongTitle}
+            onSongLengthChange={setSongLength}
+            onVocalChange={setSelectedVocal}
             showValidation={true}
           />
         </div>

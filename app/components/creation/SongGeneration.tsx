@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Music, Loader2, RefreshCw, Play, Pause, Volume2 } from 'lucide-react'
+import { Music, Loader2, Play, Pause, Volume2, Heart, Trash2 } from 'lucide-react'
 import { murekaApiService } from '../../services/murekaApi'
 import { songStorageService } from '../../services/songStorage'
 import { getCreditsForLength } from '../../services/creditSystem'
@@ -31,6 +31,8 @@ interface SongGenerationProps {
   onGenerationInfoChange?: (generationNumber: number, totalCount: number) => void
   onLyricsChange?: (lyrics: string) => void
   onTitleChange?: (title: string) => void
+  onSongLengthChange?: (songLength: number) => void
+  onVocalChange?: (vocal: string) => void
   showValidation?: boolean
 }
 
@@ -43,6 +45,12 @@ interface GeneratedSong {
   // Store the lyrics and title used to generate this song
   lyrics: string
   title: string
+  // New fields for track management
+  favorite?: boolean
+  id?: string
+  // Generation settings to restore
+  songLength: number
+  selectedVocal: string
 }
 
 export default function SongGeneration({ 
@@ -55,6 +63,8 @@ export default function SongGeneration({
   onGenerationInfoChange,
   onLyricsChange,
   onTitleChange,
+  onSongLengthChange,
+  onVocalChange,
   showValidation = false 
 }: SongGenerationProps) {
   const [isGenerating, setIsGenerating] = useState(false)
@@ -77,23 +87,38 @@ export default function SongGeneration({
         const savedSongs = localStorage.getItem(SESSION_KEY)
         if (savedSongs) {
           const songs = JSON.parse(savedSongs) as GeneratedSong[]
-          setGenerationHistory(songs)
-          if (songs.length > 0) {
-            const mostRecentSong = songs[0]
+          // Add backward compatibility for existing songs without new fields
+          const updatedSongs = songs.map((song, index) => ({
+            ...song,
+            id: song.id || `legacy_${Date.now()}_${index}`,
+            favorite: song.favorite || false,
+            // Default settings for legacy songs
+            songLength: song.songLength || songLength, // Use current setting as fallback
+            selectedVocal: song.selectedVocal || selectedVocal // Use current setting as fallback
+          }))
+          setGenerationHistory(updatedSongs)
+          if (updatedSongs.length > 0) {
+            const mostRecentSong = updatedSongs[0]
             setGeneratedSong(mostRecentSong)
             setDuration(mostRecentSong.targetDuration)
             
-            // Restore lyrics and title from the most recent generation
+            // Restore all settings from the most recent generation
             if (onLyricsChange && mostRecentSong.lyrics) {
               onLyricsChange(mostRecentSong.lyrics)
             }
             if (onTitleChange && mostRecentSong.title) {
               onTitleChange(mostRecentSong.title)
             }
+            if (onSongLengthChange && mostRecentSong.songLength) {
+              onSongLengthChange(mostRecentSong.songLength)
+            }
+            if (onVocalChange && mostRecentSong.selectedVocal) {
+              onVocalChange(mostRecentSong.selectedVocal)
+            }
             
             // Notify parent about current generation (most recent is #1)
             if (onGenerationInfoChange) {
-              onGenerationInfoChange(1, songs.length)
+              onGenerationInfoChange(1, updatedSongs.length)
             }
           }
         }
@@ -110,6 +135,60 @@ export default function SongGeneration({
       } catch (error) {
         console.error('Failed to save generated songs:', error)
       }
+    }
+  }
+
+  // Delete a specific track from history
+  const handleDeleteTrack = (trackId: string) => {
+    const updatedHistory = generationHistory.filter(song => song.id !== trackId)
+    setGenerationHistory(updatedHistory)
+    saveToSession(updatedHistory)
+    
+    // If we deleted the currently playing song, switch to the most recent
+    if (generatedSong?.id === trackId && updatedHistory.length > 0) {
+      const newCurrentSong = updatedHistory[0]
+      setGeneratedSong(newCurrentSong)
+      setDuration(newCurrentSong.targetDuration)
+      setIsPlaying(false)
+      setCurrentTime(0)
+      
+      // Clean up old audio element
+      if (audioElement) {
+        audioElement.pause()
+        audioElement.currentTime = 0
+        setAudioElement(null)
+      }
+    } else if (generatedSong?.id === trackId && updatedHistory.length === 0) {
+      // No tracks left
+      setGeneratedSong(null)
+      setIsPlaying(false)
+      setCurrentTime(0)
+      setDuration(0)
+      if (audioElement) {
+        audioElement.pause()
+        audioElement.currentTime = 0
+        setAudioElement(null)
+      }
+    }
+    
+    // Notify parent about updated generation info
+    if (onGenerationInfoChange) {
+      const currentIndex = updatedHistory.findIndex(song => song.id === generatedSong?.id)
+      onGenerationInfoChange(currentIndex + 1, updatedHistory.length)
+    }
+  }
+
+  // Toggle favorite status of a track
+  const handleToggleFavorite = (trackId: string) => {
+    const updatedHistory = generationHistory.map(song => 
+      song.id === trackId ? { ...song, favorite: !song.favorite } : song
+    )
+    setGenerationHistory(updatedHistory)
+    saveToSession(updatedHistory)
+    
+    // Update current song if it's the one being favorited
+    if (generatedSong?.id === trackId) {
+      setGeneratedSong(prev => prev ? { ...prev, favorite: !prev.favorite } : null)
     }
   }
 
@@ -197,7 +276,7 @@ export default function SongGeneration({
           console.log('🔄 Song status:', statusResponse.status)
           console.log('🔍 Full status response:', statusResponse)
           
-          setGenerationStatus(`Generating song... (${statusResponse.status})`)
+          setGenerationStatus(`Generating song...`)
           
           if (statusResponse.status === 'succeeded') {
             songCompleted = true
@@ -256,11 +335,23 @@ export default function SongGeneration({
           createdAt: new Date().toISOString(),
           targetDuration: songLength,
           lyrics: cleanedLyrics,
-          title: songTitle
+          title: songTitle,
+          id: `generation_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          favorite: false,
+          // Store generation settings for restoration
+          songLength: songLength,
+          selectedVocal: selectedVocal
         }
         
         setGeneratedSong(newSong)
-        const updatedHistory = [newSong, ...generationHistory.slice(0, 9)] // Keep last 10
+        
+        // Keep favorites and limit non-favorites to total of 10
+        const favorites = generationHistory.filter(song => song.favorite)
+        const nonFavorites = generationHistory.filter(song => !song.favorite)
+        const remainingSlots = Math.max(0, 10 - favorites.length - 1) // -1 for new song
+        const keptNonFavorites = nonFavorites.slice(0, remainingSlots)
+        
+        const updatedHistory = [newSong, ...favorites, ...keptNonFavorites]
         setGenerationHistory(updatedHistory)
         saveToSession(updatedHistory)
         
@@ -416,12 +507,18 @@ export default function SongGeneration({
       onSongGenerated(song.audioUrl)
     }
     
-    // Update lyrics and title to match the selected generation
+    // Update all settings to match the selected generation
     if (onLyricsChange && song.lyrics) {
       onLyricsChange(song.lyrics)
     }
     if (onTitleChange && song.title) {
       onTitleChange(song.title)
+    }
+    if (onSongLengthChange && song.songLength) {
+      onSongLengthChange(song.songLength)
+    }
+    if (onVocalChange && song.selectedVocal) {
+      onVocalChange(song.selectedVocal)
     }
     
     // Calculate and notify generation number
@@ -469,7 +566,6 @@ export default function SongGeneration({
             <div className="flex items-center space-x-3">
               <Music className="w-5 h-5" />
               <span>{generatedSong ? 'Regenerate Song' : 'Generate Song'}</span>
-              {generatedSong && <RefreshCw className="w-4 h-4" />}
             </div>
           )}
         </button>
@@ -557,21 +653,39 @@ export default function SongGeneration({
               return (
                 <div
                   key={index}
-                  className={`p-3 rounded-lg border transition-all ${
+                  className={`p-3 rounded-lg border transition-all cursor-pointer ${
                     isCurrentSong 
                       ? 'bg-green-500/10 border-green-500/30 ring-1 ring-green-500/20' 
-                      : 'bg-white/5 border-white/10 hover:bg-white/10'
+                      : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
                   }`}
+                  onClick={() => {
+                    if (!isCurrentSong) {
+                      handleSelectPreviousSong(song)
+                    }
+                  }}
                 >
                   <div className="flex items-center space-x-3">
-                    {/* Generation Icon */}
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
-                      isCurrentSong 
-                        ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                        : 'bg-white/10 text-gray-400'
-                    }`}>
-                      {generationNumber}
-                    </div>
+                    {/* Generation Icon - Click to Favorite */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation() // Prevent row click
+                        handleToggleFavorite(song.id!)
+                      }}
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all hover:scale-105 ${
+                        song.favorite
+                          ? 'bg-pink-500/20 text-pink-400 border border-pink-500/30 hover:bg-pink-500/30'
+                          : isCurrentSong 
+                            ? 'bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-pink-500/20 hover:border-pink-500/30'
+                            : 'bg-white/10 text-gray-400 border border-gray-500/30 hover:bg-pink-500/20 hover:border-pink-500/30'
+                      }`}
+                      title={song.favorite ? 'Remove from favorites' : 'Add to favorites'}
+                    >
+                      {song.favorite ? (
+                        <Heart className="w-4 h-4 fill-current" />
+                      ) : (
+                        generationNumber
+                      )}
+                    </button>
                     
                     {/* Generation Info */}
                     <div className="flex-1 min-w-0">
@@ -601,18 +715,22 @@ export default function SongGeneration({
                     
                     {/* Action Buttons */}
                     <div className="flex items-center space-x-2">
-                      {!isCurrentSong && (
-                        <button
-                          onClick={() => handleSelectPreviousSong(song)}
-                          className="w-8 h-8 bg-blue-500/20 hover:bg-blue-500/30 rounded-full flex items-center justify-center transition-colors border border-blue-500/30"
-                          title="Switch to this generation"
-                        >
-                          <RefreshCw className="w-4 h-4 text-blue-400" />
-                        </button>
-                      )}
-                      
+                      {/* Delete Button */}
                       <button
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation() // Prevent row click
+                          handleDeleteTrack(song.id!)
+                        }}
+                        className="w-8 h-8 bg-red-500/20 hover:bg-red-500/30 rounded-full flex items-center justify-center transition-colors border border-red-500/30"
+                        title="Delete this generation"
+                      >
+                        <Trash2 className="w-4 h-4 text-red-400" />
+                      </button>
+                      
+                      {/* Play/Pause Button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation() // Prevent row click
                           if (!isCurrentSong) {
                             handleSelectPreviousSong(song)
                           }
