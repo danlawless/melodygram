@@ -35,6 +35,7 @@ interface SongGenerationProps {
   onVocalChange?: (vocal: string) => void
   showValidation?: boolean
   onHistoryUpdate?: (history: GeneratedSong[], currentIndex: number) => void
+  activeAudioUrl?: string // URL of the song that should be highlighted as active
 }
 
 interface GeneratedSong {
@@ -67,7 +68,8 @@ export default function SongGeneration({
   onSongLengthChange,
   onVocalChange,
   showValidation = false,
-  onHistoryUpdate
+  onHistoryUpdate,
+  activeAudioUrl
 }: SongGenerationProps) {
   const [isGenerating, setIsGenerating] = useState(false)
   const [generationError, setGenerationError] = useState<string | null>(null)
@@ -135,6 +137,26 @@ export default function SongGeneration({
       }
     }
   }, [])
+
+  // Sync active song when parent navigates using arrows
+  useEffect(() => {
+    if (activeAudioUrl && generationHistory.length > 0) {
+      const targetSong = generationHistory.find(song => song.audioUrl === activeAudioUrl)
+      if (targetSong && generatedSong?.audioUrl !== activeAudioUrl) {
+        setGeneratedSong(targetSong)
+        setDuration(targetSong.targetDuration)
+        
+        // Reset audio state when switching songs externally
+        setIsPlaying(false)
+        setCurrentTime(0)
+        if (audioElement) {
+          audioElement.pause()
+          audioElement.currentTime = 0
+          setAudioElement(null)
+        }
+      }
+    }
+  }, [activeAudioUrl, generationHistory, generatedSong?.audioUrl, audioElement])
 
   const saveToSession = (songs: GeneratedSong[]) => {
     if (typeof window !== 'undefined') {

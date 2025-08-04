@@ -707,6 +707,7 @@ export default function CreationStudio() {
             onVocalChange={setSelectedVocal}
             showValidation={true}
             onHistoryUpdate={handleSongHistoryUpdate}
+            activeAudioUrl={songHistory[currentSongIndex]?.audioUrl}
           />
         </div>
 
