@@ -26,6 +26,9 @@ interface FinalPreviewProps {
   onNextAudio?: () => void
   hasMultipleAvatars?: boolean
   hasMultipleAudio?: boolean
+  
+  // Gender matching
+  currentAvatarGender?: string // Gender of current avatar for matching
 }
 
 export default function FinalPreview({
@@ -43,7 +46,8 @@ export default function FinalPreview({
   onPreviousAudio,
   onNextAudio,
   hasMultipleAvatars = false,
-  hasMultipleAudio = false
+  hasMultipleAudio = false,
+  currentAvatarGender
 }: FinalPreviewProps) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null)
@@ -52,6 +56,27 @@ export default function FinalPreview({
 
   // Get the image URL to display
   const imageUrl = uploadedImageUrl || generatedImageUrl
+
+  // Gender matching logic
+  const getGenderMatch = () => {
+    if (!currentAvatarGender || !selectedVocal) return null
+    
+    const voiceGender = selectedVocal.toLowerCase()
+    const avatarGender = currentAvatarGender.toLowerCase()
+    
+    const isMatch = voiceGender === avatarGender
+    
+    return {
+      isMatch,
+      voiceGender,
+      avatarGender,
+      message: isMatch 
+        ? `Perfect match: ${avatarGender === 'male' ? 'Male' : 'Female'} voice & avatar`
+        : `Mismatch: ${voiceGender === 'male' ? 'Male' : 'Female'} voice with ${avatarGender === 'male' ? 'Male' : 'Female'} avatar`
+    }
+  }
+
+  const genderMatch = getGenderMatch()
 
   // Format time display
   const formatTime = (seconds: number): string => {
@@ -244,6 +269,20 @@ export default function FinalPreview({
               <p className="text-gray-300 text-sm">
                 {formatSongLength(songLength)} • {selectedVocal.charAt(0).toUpperCase() + selectedVocal.slice(1)} Voice
               </p>
+              
+              {/* Gender Match Indicator */}
+              {genderMatch && (
+                <div className={`flex items-center space-x-1 mt-1 ${
+                  genderMatch.isMatch ? 'text-green-400' : 'text-amber-400'
+                }`}>
+                  <div className={`w-2 h-2 rounded-full ${
+                    genderMatch.isMatch ? 'bg-green-400' : 'bg-amber-400'
+                  }`} />
+                  <span className="text-xs">
+                    {genderMatch.isMatch ? '✓ Perfect match' : '⚠ Voice/Avatar mismatch'}
+                  </span>
+                </div>
+              )}
             </div>
             
             <div className="flex items-center space-x-2 ml-3">

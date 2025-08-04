@@ -15,6 +15,7 @@ interface GeneratedAvatar {
   mood?: string
   favorite?: boolean // Heart/favorite functionality
   isTemporaryUrl?: boolean // Flag to indicate URL may expire (GPT/DALL-E URLs)
+  gender?: string // Track gender for voice/avatar matching (male/female)
 }
 
 interface ImageUploadProps {
@@ -58,10 +59,11 @@ export default function ImageUpload({ uploadedImage, onImageUpload, onImageGener
           // Handle both old format (direct array) and new format (with metadata)
           const avatars = Array.isArray(parsed) ? parsed : parsed.avatars || []
           
-          // Add backward compatibility for existing avatars without favorite field
+          // Add backward compatibility for existing avatars without favorite or gender fields
           const avatarsWithFavorites = avatars.map((avatar: GeneratedAvatar) => ({
             ...avatar,
-            favorite: avatar.favorite || false
+            favorite: avatar.favorite || false,
+            gender: avatar.gender || undefined // Keep undefined for legacy avatars without gender data
           }))
           
           // Migrate legacy avatars to use proxy URLs (reduces CORS errors)
@@ -439,7 +441,8 @@ export default function ImageUpload({ uploadedImage, onImageUpload, onImageGener
           style: selectedStyle || 'photorealistic',
           mood: selectedMood || 'friendly',
           favorite: false,
-          isTemporaryUrl: !response.proxiedUrl // Only external URLs are temporary
+          isTemporaryUrl: !response.proxiedUrl, // Only external URLs are temporary
+          gender: selectedGender // Track gender for voice/avatar matching
         }
         
         await addToAvatarHistory(newAvatar)

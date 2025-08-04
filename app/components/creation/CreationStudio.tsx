@@ -742,6 +742,7 @@ export default function CreationStudio() {
               onNextAvatar={handleNextAvatar}
               onPreviousAudio={handlePreviousSong}
               onNextAudio={handleNextSong}
+              currentAvatarGender={avatarHistory[currentAvatarIndex]?.gender}
             />
           </div>
         )}
