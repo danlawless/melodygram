@@ -254,13 +254,13 @@ export default function FinalPreview({
               
               <button
                 onClick={handlePlayPause}
-                className="w-12 h-12 bg-green-500/20 hover:bg-green-500/30 rounded-full flex items-center justify-center transition-colors border border-green-500/30"
+                className="w-12 h-12 bg-green-500/20 hover:bg-green-500/30 rounded-full flex items-center justify-center transition-colors border border-green-500/30 flex-shrink-0"
                 title={isPlaying ? 'Pause' : 'Play'}
               >
                 {isPlaying ? (
                   <Pause className="w-6 h-6 text-green-400" />
                 ) : (
-                  <Play className="w-6 h-6 text-green-400 ml-0.5" />
+                  <Play className="w-6 h-6 text-green-400" />
                 )}
               </button>
             </div>

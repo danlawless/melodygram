@@ -498,9 +498,6 @@ export default function SongGeneration({
         <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-green-500/20 rounded-full flex items-center justify-center">
-                <Volume2 className="w-5 h-5 text-green-400" />
-              </div>
               <div>
                 <h3 className="font-medium text-white">
                   ✅ Generation {generationHistory.length - generationHistory.findIndex(song => song.audioUrl === generatedSong.audioUrl)} - {generatedSong.title || 'Untitled'} {isPlaying ? '• Playing' : '• Ready'}
@@ -513,13 +510,13 @@ export default function SongGeneration({
             
             <button
               onClick={handlePlayPause}
-              className="w-12 h-12 bg-green-500/20 hover:bg-green-500/30 rounded-full flex items-center justify-center transition-colors border border-green-500/30"
+              className="w-12 h-12 bg-green-500/20 hover:bg-green-500/30 rounded-full flex items-center justify-center transition-colors border border-green-500/30 flex-shrink-0"
               title={isPlaying ? 'Pause' : (currentTime === 0 && !isPlaying ? 'Play' : 'Replay')}
             >
               {isPlaying ? (
                 <Pause className="w-6 h-6 text-green-400" />
               ) : (
-                <Play className="w-6 h-6 text-green-400 ml-0.5" />
+                <Play className="w-6 h-6 text-green-400" />
               )}
             </button>
           </div>
@@ -622,7 +619,7 @@ export default function SongGeneration({
                           // Small delay to ensure song is set before playing
                           setTimeout(() => handlePlayPause(), 100)
                         }}
-                        className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                        className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors flex-shrink-0 ${
                           isCurrentSong && isPlaying
                             ? 'bg-red-500/20 border-red-500/30 hover:bg-red-500/30'
                             : 'bg-green-500/20 border-green-500/30 hover:bg-green-500/30'
@@ -632,7 +629,7 @@ export default function SongGeneration({
                         {isCurrentSong && isPlaying ? (
                           <Pause className="w-4 h-4 text-red-400" />
                         ) : (
-                          <Play className="w-4 h-4 text-green-400 ml-0.5" />
+                          <Play className="w-4 h-4 text-green-400" />
                         )}
                       </button>
                     </div>
