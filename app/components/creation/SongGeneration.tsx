@@ -305,14 +305,25 @@ export default function SongGeneration({
           audio.addEventListener('timeupdate', () => {
             const currentTime = audio.currentTime
             const targetDuration = generatedSong.targetDuration
+            const fadeInDuration = 0.5 // 0.5 seconds fade-in
             const fadeOutDuration = 0.5 // 0.5 seconds fade-out
-            const fadeStartTime = targetDuration - fadeOutDuration
+            const fadeOutStartTime = targetDuration - fadeOutDuration
             
-            // Start fade-out in the last 0.5 seconds
-            if (currentTime >= fadeStartTime && currentTime < targetDuration) {
-              const fadeProgress = (currentTime - fadeStartTime) / fadeOutDuration
+            // Smooth fade-in during the first 0.5 seconds
+            if (currentTime <= fadeInDuration) {
+              const fadeProgress = currentTime / fadeInDuration
+              const volume = Math.min(1, fadeProgress) // Fade from 0 to 1
+              audio.volume = volume
+            }
+            // Smooth fade-out in the last 0.5 seconds  
+            else if (currentTime >= fadeOutStartTime && currentTime < targetDuration) {
+              const fadeProgress = (currentTime - fadeOutStartTime) / fadeOutDuration
               const volume = Math.max(0, 1 - fadeProgress) // Fade from 1 to 0
               audio.volume = volume
+            }
+            // Full volume in the middle section
+            else if (currentTime > fadeInDuration && currentTime < fadeOutStartTime) {
+              audio.volume = 1.0
             }
             
             // Auto-pause when reaching target duration
@@ -321,7 +332,7 @@ export default function SongGeneration({
               audio.volume = 1.0 // Reset volume for next play
               setIsPlaying(false)
               setCurrentTime(targetDuration)
-              console.log('🎵 Auto-paused at target duration with fade-out:', targetDuration + 's')
+              console.log('🎵 Auto-paused at target duration with fade-in/out:', targetDuration + 's')
             } else {
               setCurrentTime(currentTime)
             }
@@ -330,10 +341,10 @@ export default function SongGeneration({
           setAudioElement(audio)
         }
 
-        audio.volume = 1.0 // Ensure full volume at start
+        audio.volume = 0.0 // Start at 0 volume for smooth fade-in
         await audio.play()
         setIsPlaying(true)
-        console.log('🎵 Audio playback started for:', generatedSong.audioUrl?.substring(0, 50) + '...')
+        console.log('🎵 Audio playback started with fade-in for:', generatedSong.audioUrl?.substring(0, 50) + '...')
       }
     } catch (error) {
       console.error('🎵 Audio playback error:', error)
