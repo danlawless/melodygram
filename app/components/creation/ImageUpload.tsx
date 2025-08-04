@@ -118,13 +118,47 @@ export default function ImageUpload({ uploadedImage, onImageUpload, onImageGener
       })
       
       if (response.imageUrl) {
-        // Set the generated image URL for display
+        // Set the generated image URL for display (temporary)
         setPreview(response.imageUrl)
-        console.log(`🎨 Avatar generated successfully! Image URL available for display.`)
+        console.log(`🎨 Avatar generated successfully! Converting to permanent URL...`)
         
-        // Notify parent that we have a generated image
-        if (onImageGenerated) {
-          onImageGenerated(response.imageUrl)
+        // Convert temporary DALL-E URL to permanent data URL to avoid expiration
+        try {
+          const uploadResponse = await fetch('/api/upload/image', {
+            method: 'POST',
+            body: (() => {
+              const formData = new FormData()
+              formData.append('imageUrl', response.imageUrl)
+              formData.append('filename', 'generated-avatar.png')
+              return formData
+            })()
+          })
+          
+          if (uploadResponse.ok) {
+            const uploadData = await uploadResponse.json()
+            const permanentUrl = uploadData.dataUrl // Use the base64 data URL
+            
+            // Update preview with permanent URL
+            setPreview(permanentUrl)
+            console.log(`✅ Avatar converted to permanent URL (${Math.round(uploadData.size / 1024)}KB)`)
+            
+            // Notify parent with permanent URL
+            if (onImageGenerated) {
+              onImageGenerated(permanentUrl)
+            }
+          } else {
+            console.warn('⚠️ Failed to convert to permanent URL, using temporary URL')
+            // Fallback to temporary URL
+            if (onImageGenerated) {
+              onImageGenerated(response.imageUrl)
+            }
+          }
+        } catch (conversionError) {
+          console.warn('⚠️ Failed to convert to permanent URL:', conversionError)
+          // Fallback to temporary URL
+          if (onImageGenerated) {
+            onImageGenerated(response.imageUrl)
+          }
         }
         
         // Check if this is an external URL that will definitely fail CORS

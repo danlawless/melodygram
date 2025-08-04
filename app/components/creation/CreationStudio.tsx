@@ -86,9 +86,18 @@ export default function CreationStudio() {
           if (session.selectedVocal) { setSelectedVocal(session.selectedVocal); restored.push('vocal') }
           if (session.songLength) { setSongLength(session.songLength); restored.push('length') }
           if (session.generatedImageUrl) { 
-            setGeneratedImageUrl(session.generatedImageUrl); 
-            restored.push('generated-image')
-            console.log('🎨 Restored generated image URL:', session.generatedImageUrl?.substring(0, 50) + '...')
+            // Check if the URL is expired (DALL-E URLs have expiration parameters)
+            const isExpiredDalleUrl = session.generatedImageUrl.includes('blob.core.windows.net') && 
+                                    session.generatedImageUrl.includes('se=')
+            
+            if (isExpiredDalleUrl) {
+              console.log('🔴 Expired DALL-E URL detected, clearing generated image from session')
+              // Don't restore expired URLs
+            } else {
+              setGeneratedImageUrl(session.generatedImageUrl); 
+              restored.push('generated-image')
+              console.log('🎨 Restored generated image URL:', session.generatedImageUrl?.substring(0, 50) + '...')
+            }
           }
           if (session.generatedSongUrl) {
             setGeneratedSongUrl(session.generatedSongUrl);
@@ -154,12 +163,17 @@ export default function CreationStudio() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const timeoutId = setTimeout(() => {
+        // Don't save expired DALL-E URLs
+        const cleanGeneratedImageUrl = generatedImageUrl && 
+          generatedImageUrl.includes('blob.core.windows.net') && 
+          generatedImageUrl.includes('se=') ? null : generatedImageUrl
+        
         const session = {
           lyrics,
           songTitle,
           selectedVocal,
           songLength,
-          generatedImageUrl,
+          generatedImageUrl: cleanGeneratedImageUrl,
           generatedSongUrl,
           uploadedImageUrl,
           uploadedImageName: uploadedImage?.name || null,
