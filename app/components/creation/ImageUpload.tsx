@@ -866,7 +866,7 @@ export default function ImageUpload({ uploadedImage, onImageUpload, onImageGener
                 
                 {/* Integrated History Management Dropdown */}
                 {showHistoryMenu && (
-                  <div className="absolute right-0 top-6 mt-1 w-56 bg-gray-800/95 backdrop-blur-md border border-gray-600/50 rounded-lg shadow-xl z-50">
+                  <div className="absolute right-0 top-6 mt-1 w-56 bg-gray-800/98 backdrop-blur-xl border border-gray-600/70 rounded-lg shadow-2xl z-[9999]">
                     <div className="p-2">
                       <div className="text-xs text-gray-400 mb-2 px-2">Avatar History ({avatarHistory.length})</div>
                       
