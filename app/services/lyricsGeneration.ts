@@ -33,19 +33,27 @@ const getLyricsGuideline = (seconds: number): string => {
 
 const getWordCountTarget = (seconds: number): { min: number, max: number } => {
   // Precise word count targets based on duration
-  let targetWords
+  let maxWords
   
-  if (seconds <= 10) targetWords = 10
-  else if (seconds <= 20) targetWords = 20
-  else if (seconds <= 30) targetWords = 30
-  else if (seconds <= 60) targetWords = 60
-  else if (seconds <= 120) targetWords = 120
-  else if (seconds <= 240) targetWords = 240
-  else targetWords = Math.floor(seconds * 2) // Fallback for custom durations
+  if (seconds <= 10) maxWords = 10
+  else if (seconds <= 20) maxWords = 20
+  else if (seconds <= 30) maxWords = 30
+  else if (seconds <= 60) maxWords = 60
+  else if (seconds <= 120) maxWords = 120
+  else if (seconds <= 240) maxWords = 240
+  else maxWords = Math.floor(seconds * 2) // Fallback for custom durations
+  
+  // Target 20% less than max to provide buffer and prevent overages
+  // For very short songs, use smaller reduction to avoid being too restrictive
+  let reductionFactor
+  if (maxWords <= 20) reductionFactor = 0.9  // 10% less for very short (10s, 20s)
+  else reductionFactor = 0.8  // 20% less for longer songs
+  
+  const targetWords = Math.floor(maxWords * reductionFactor)
   
   return {
-    min: Math.max(1, targetWords - 5),  // Allow small variance
-    max: targetWords + 5
+    min: Math.max(1, targetWords - 2),  // Small variance below target
+    max: targetWords  // Cap at reduced target
   }
 }
 

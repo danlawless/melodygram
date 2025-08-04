@@ -38,7 +38,7 @@ function createLyricsPrompt(options: LyricsGenerationOptions): string {
 
 CRITICAL REQUIREMENTS:
 - Song duration: EXACTLY ${lengthInSeconds} seconds
-- Target word count: ${wordCountTarget?.min}-${wordCountTarget?.max} words
+- Target word count: ${wordCountTarget?.min}-${wordCountTarget?.max} words (IMPORTANT: Stay within this range to prevent overages)
 - Structure: ${lyricsGuideline}
 - Genre: ${genre}
 - Mood: ${mood}
@@ -63,6 +63,8 @@ ${lengthInSeconds <= 30
 - Each line should flow naturally when sung in ${genre} style
 
 ${customPrompt ? `\nAdditional creative direction: ${customPrompt}` : ''}
+
+WORD COUNT REMINDER: Target ${wordCountTarget?.min}-${wordCountTarget?.max} words. Count carefully and stay within this range to prevent the song from being too long.
 
 Generate ONLY the lyrics with structure markers. Make them perfect for a ${lengthInSeconds}-second ${genre} song with ${mood} mood.`
 
