@@ -503,7 +503,7 @@ export default function SongGeneration({
               </div>
               <div>
                 <h3 className="font-medium text-white">
-                  ✅ Generation {generationHistory.length - generationHistory.findIndex(song => song.audioUrl === generatedSong.audioUrl)} {isPlaying ? '• Playing' : '• Ready'}
+                  ✅ Generation {generationHistory.length - generationHistory.findIndex(song => song.audioUrl === generatedSong.audioUrl)} - {generatedSong.title || 'Untitled'} {isPlaying ? '• Playing' : '• Ready'}
                 </h3>
                 <p className="text-sm text-gray-400">
                   {new Date(generatedSong.createdAt).toLocaleString()}
@@ -582,7 +582,7 @@ export default function SongGeneration({
                         <p className={`text-sm font-medium ${
                           isCurrentSong ? 'text-green-400' : 'text-white'
                         }`}>
-                          Generation {generationNumber}
+                          Generation {generationNumber} - {song.title || 'Untitled'}
                           {isCurrentSong && <span className="text-xs ml-1">• Active</span>}
                         </p>
                       </div>
