@@ -445,10 +445,10 @@ export default function CreationStudio() {
         try {
           // COST PROTECTION: Estimate cost before proceeding (same as working test)
           const { estimateLemonSliceCost, checkCostLimit, COST_LIMITS } = await import('../../utils/costEstimator')
-          const costEstimate = estimateLemonSliceCost('320', 15) // Assume 15 seconds for avatar
+          const costEstimate = estimateLemonSliceCost('256', 15) // Assume 15 seconds for avatar
           const costCheck = checkCostLimit(costEstimate, COST_LIMITS.PRODUCTION)
           
-          console.log(`💰 Estimated cost: $${costEstimate.costUSD} (15s @ 320px)`)
+          console.log(`💰 Estimated cost: $${costEstimate.costUSD} (15s @ 256px)`)
           console.log(costCheck.message)
           
           if (!costCheck.allowed) {
@@ -467,7 +467,7 @@ export default function CreationStudio() {
             title: songTitle, // Pass the song title
             songLength: songLength, // Pass song length for better generation
             model: 'V2.5', // Using V2.5 model (not V2.7)
-            resolution: '320', // Standard resolution for faster processing
+            resolution: '256', // Lower resolution for cost savings (recommended by LemonSlice)
             animation_style: 'autoselect',
             expressiveness: 0.8,
             crop_head: false
