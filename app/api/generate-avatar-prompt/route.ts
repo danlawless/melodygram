@@ -10,18 +10,20 @@ export async function POST(request: NextRequest) {
     const { style, mood } = await request.json()
 
     // Create a prompt for GPT-4o-mini to generate creative avatar descriptions
-    const systemPrompt = `You are a creative AI avatar prompt generator. Generate imaginative, diverse, and appealing portrait descriptions for DALL-E 3 avatar generation.
+    const systemPrompt = `You are a creative AI avatar prompt generator. Generate imaginative, diverse, and appealing waist-up descriptions for DALL-E 3 avatar generation.
 
 Guidelines:
-- Create prompts for professional, artistic, or creative portraits
-- Focus on facial expressions, lighting, and overall aesthetic
+- Create prompts for professional, artistic, or creative waist-up shots
+- Focus on facial expressions, body language, lighting, and overall aesthetic
 - Include diverse ethnicities, ages, and styles naturally
 - Keep descriptions concise but vivid (1-2 sentences max)
 - Avoid specifying exact physical features unless it's about artistic style
-- Make it suitable for profile pictures/avatars
+- Make it suitable for profile pictures/avatars with waist-up framing
+- Use medium shot framing showing upper body in professional attire - NOT close-up on face
+- Ensure the person is properly clothed in business or casual wear, zoomed out enough to show from waist up, not tight facial crops
 - Be inclusive and avoid stereotypes
 
-Generate ONE creative avatar prompt that would result in an appealing profile picture.`
+Generate ONE creative avatar prompt that would result in an appealing waist-up profile picture.`
 
     let userPrompt = `Generate a creative avatar prompt`
     
@@ -64,11 +66,11 @@ Generate ONE creative avatar prompt that would result in an appealing profile pi
     
     // Return a fallback prompt instead of erroring
     const fallbackPrompts = [
-      "A warm and approachable portrait with soft natural lighting and genuine smile",
-      "Professional headshot with confident expression and modern studio lighting",
-      "Artistic portrait with creative composition and inspiring expression",
-      "Friendly portrait with natural smile and warm, welcoming atmosphere",
-      "Contemporary portrait with clean aesthetic and engaging expression"
+      "Warm and approachable waist-up portrait, properly clothed in business attire, soft natural lighting, genuine smile",
+      "Professional medium shot from waist up, wearing formal business clothing, confident expression, modern studio lighting",
+      "Artistic waist-up composition, dressed in professional attire, creative framing, inspiring expression",
+      "Friendly medium shot from waist up, wearing casual professional clothing, natural smile, warm welcoming atmosphere",
+      "Contemporary waist-up view, properly dressed in business wear, clean aesthetic, engaging expression"
     ]
     
     const fallbackPrompt = fallbackPrompts[Math.floor(Math.random() * fallbackPrompts.length)]

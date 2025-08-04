@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
       audio_url: body.audio, // Expecting this to be a public URL now
       model: 'V2.5',
       resolution: '512',
-      animation_style: 'autoselect',
+      animation_style: 'entire_image', // Use entire_image for better waist-up framing
       expressiveness: 0.8,
       crop_head: false
     }

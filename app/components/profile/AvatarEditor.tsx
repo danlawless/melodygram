@@ -100,9 +100,9 @@ export default function AvatarEditor({ currentAvatar, onAvatarChange, onClose }:
         finalPrompt = `${finalPrompt}, ${selectedMood} mood`
       }
 
-      // Ensure it's avatar-focused
-      if (!finalPrompt.toLowerCase().includes('portrait') && !finalPrompt.toLowerCase().includes('headshot')) {
-        finalPrompt = `Portrait: ${finalPrompt}`
+      // Ensure it's avatar-focused with waist-up framing
+      if (!finalPrompt.toLowerCase().includes('waist-up') && !finalPrompt.toLowerCase().includes('medium shot')) {
+        finalPrompt = `Waist-up shot: ${finalPrompt}`
       }
 
       const options: ImageGenerationOptions = {
@@ -150,7 +150,7 @@ export default function AvatarEditor({ currentAvatar, onAvatarChange, onClose }:
     } catch (error) {
       console.error('Error generating avatar prompt:', error)
       // Fallback to a default prompt
-      return `A professional and friendly portrait of a person with ${mood || 'warm'} expression, ${style || 'natural lighting'}`
+      return `Professional and friendly waist-up shot of a person, zoomed out to show torso and arms, ${mood || 'warm'} expression, ${style || 'natural lighting'}`
     }
   }
 

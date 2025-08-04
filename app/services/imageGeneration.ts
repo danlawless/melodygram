@@ -10,6 +10,7 @@ export interface ImageGenerationResponse {
   imageUrl: string
   revisedPrompt?: string
   source: 'openai'
+  proxiedUrl?: string // URL served through our proxy to avoid CORS issues
 }
 
 class ImageGenerationService {
@@ -38,8 +39,13 @@ class ImageGenerationService {
       }
 
       const data = await response.json()
+      
+      // Create a proxied URL to serve the image from our domain (avoids CORS issues)
+      const proxiedUrl = `/api/proxy-image?url=${encodeURIComponent(data.imageUrl)}`
+      
       return {
-        imageUrl: data.imageUrl,
+        imageUrl: data.imageUrl, // Original external URL
+        proxiedUrl: proxiedUrl,  // Our proxied URL (no CORS issues)
         revisedPrompt: data.revisedPrompt,
         source: 'openai'
       }
@@ -83,11 +89,8 @@ class ImageGenerationService {
       const isCorsError = error instanceof TypeError && error.message.includes('fetch')
       
       if (isCorsError) {
-        // Don't log scary errors for expected CORS issues
-        console.log('📝 Image URL to File conversion blocked by CORS (expected for external URLs)')
         throw new Error('CORS_BLOCKED')
       } else {
-        // Log other unexpected errors
         console.error('Failed to convert URL to File:', error)
         throw new Error('Failed to process generated image')
       }
@@ -99,14 +102,11 @@ class ImageGenerationService {
    */
   getSuggestedPrompts(): string[] {
     return [
-      "A professional headshot of a friendly person with a warm smile",
-      "Portrait of a creative artist with an inspiring expression",
-      "Headshot of a confident business professional",
-      "Portrait of a musician with passionate eyes",
-      "A smiling person with natural lighting and soft background",
-      "Portrait of an elegant person with artistic flair",
-      "Headshot of a charismatic speaker with engaging expression",
-      "Portrait of a wise mentor with kind eyes"
+      "Professional waist-up portrait of a friendly person in business attire, warm smile",
+      "Medium shot of a creative artist, properly clothed, inspiring expression",
+      "Waist-up view of a confident business professional in formal wear, not close-up",
+      "Professional portrait of a musician in casual clothing, passionate expression",
+      "Waist-up shot of a smiling person in professional attire, natural lighting"
     ]
   }
 
@@ -117,11 +117,11 @@ class ImageGenerationService {
     return [
       { value: '', label: 'Default' },
       { value: 'photorealistic', label: 'Photorealistic' },
-      { value: 'portrait photography', label: 'Portrait Photography' },
+      { value: 'waist-up photography', label: 'Portrait Photography' },
       { value: 'studio lighting', label: 'Studio Lighting' },
       { value: 'natural lighting', label: 'Natural Lighting' },
-      { value: 'professional headshot', label: 'Professional Headshot' },
-      { value: 'artistic portrait', label: 'Artistic Portrait' },
+      { value: 'professional medium shot', label: 'Professional Headshot' },
+      { value: 'artistic waist-up', label: 'Artistic Portrait' },
       { value: 'cinematic', label: 'Cinematic' }
     ]
   }

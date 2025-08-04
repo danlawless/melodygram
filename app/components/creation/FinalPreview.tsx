@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Play, Pause, Music, Image as ImageIcon, User, Clock, Mic } from 'lucide-react'
+import { Play, Pause, Music, Image as ImageIcon, User, Clock, Mic, ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface FinalPreviewProps {
   // Image data
@@ -18,6 +18,14 @@ interface FinalPreviewProps {
   
   // Lyrics preview (should match the selected generation)
   lyrics: string
+  
+  // Navigation handlers
+  onPreviousAvatar?: () => void
+  onNextAvatar?: () => void
+  onPreviousAudio?: () => void
+  onNextAudio?: () => void
+  hasMultipleAvatars?: boolean
+  hasMultipleAudio?: boolean
 }
 
 export default function FinalPreview({
@@ -29,7 +37,13 @@ export default function FinalPreview({
   generatedSongUrl,
   currentGenerationNumber,
   totalGenerations,
-  lyrics
+  lyrics,
+  onPreviousAvatar,
+  onNextAvatar,
+  onPreviousAudio,
+  onNextAudio,
+  hasMultipleAvatars = false,
+  hasMultipleAudio = false
 }: FinalPreviewProps) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null)
@@ -161,129 +175,135 @@ export default function FinalPreview({
     return null // Don't show preview until everything is ready
   }
 
-  return (
-    <div className="bg-gradient-to-br from-purple-900/20 via-blue-900/20 to-pink-900/20 backdrop-blur-sm border border-white/10 rounded-2xl p-6 space-y-6">
-      {/* Header */}
-      <div className="text-center">
-        <h3 className="text-xl font-bold text-white mb-2">Preview Your MelodyGram</h3>
-        <p className="text-gray-400 text-sm">Review everything before generating your final video</p>
-      </div>
-
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* Left: Image Preview */}
-        <div className="space-y-4">
-          <div className="relative aspect-square rounded-xl overflow-hidden bg-gray-800 border border-white/10">
-            {imageUrl ? (
-              <img
-                src={imageUrl}
-                alt="Avatar preview"
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <ImageIcon className="w-12 h-12 text-gray-500" />
-              </div>
-            )}
-          </div>
-          
-          <div className="text-center">
-            <p className="text-sm text-gray-400">
-              {uploadedImageUrl ? 'Uploaded Avatar' : 'Generated Avatar'}
-            </p>
+    return (
+    <div className="relative bg-gradient-to-br from-purple-900/30 via-blue-900/20 to-pink-900/30 backdrop-blur-xl border border-white/20 rounded-3xl overflow-hidden shadow-2xl">
+      {/* Full-Size Avatar Display */}
+      <div className="relative">
+        <div className="w-full h-96 bg-gradient-to-br from-gray-700 to-gray-800 overflow-hidden">
+          {imageUrl ? (
+            <img
+              src={imageUrl}
+              alt="Avatar preview"
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                console.warn('🚫 Final preview avatar failed to load (likely expired URL):', imageUrl)
+                // Replace with placeholder
+                if (e.currentTarget.parentElement) {
+                  e.currentTarget.parentElement.innerHTML = `
+                    <div class="w-full h-full flex items-center justify-center bg-gray-700">
+                      <div class="text-center text-gray-400">
+                        <div class="text-4xl mb-2">🚫</div>
+                        <div class="text-sm">Avatar Expired</div>
+                        <div class="text-xs mt-1">Please regenerate</div>
+                      </div>
+                    </div>
+                  `
+                }
+              }}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <ImageIcon className="w-16 h-16 text-gray-400" />
+            </div>
+          )}
+        </div>
+        
+        {/* Avatar Badge */}
+        <div className="absolute top-4 right-4">
+          <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-medium px-3 py-1 rounded-full border border-white/20 shadow-lg backdrop-blur-sm">
+            {uploadedImageUrl ? 'Uploaded Avatar' : 'Generated Avatar'}
           </div>
         </div>
 
-        {/* Right: Song Details */}
-        <div className="space-y-4">
-          {/* Song Title */}
-          <div className="bg-white/5 rounded-lg p-4 border border-white/10">
-            <div className="flex items-center space-x-3 mb-2">
-              <Music className="w-5 h-5 text-purple-400" />
-              <span className="text-sm font-medium text-gray-300">Song Title</span>
-            </div>
-            <p className="text-white font-semibold text-lg">{songTitle}</p>
-          </div>
+        {/* Avatar Navigation Arrows */}
+        {hasMultipleAvatars && (
+          <>
+            <button
+              onClick={onPreviousAvatar}
+              className="absolute left-4 top-1/2 transform -translate-y-1/2 w-10 h-10 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center transition-all duration-200 backdrop-blur-sm border border-white/20 shadow-lg hover:shadow-xl hover:scale-105"
+              title="Previous Avatar"
+            >
+              <ChevronLeft className="w-5 h-5 text-white" />
+            </button>
+            
+            <button
+              onClick={onNextAvatar}
+              className="absolute right-4 top-1/2 transform -translate-y-1/2 w-10 h-10 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center transition-all duration-200 backdrop-blur-sm border border-white/20 shadow-lg hover:shadow-xl hover:scale-105"
+              title="Next Avatar"
+            >
+              <ChevronRight className="w-5 h-5 text-white" />
+            </button>
+          </>
+        )}
 
-          {/* Song Details Grid */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-              <div className="flex items-center space-x-2 mb-1">
-                <Clock className="w-4 h-4 text-blue-400" />
-                <span className="text-xs text-gray-400">Duration</span>
-              </div>
-              <p className="text-white font-medium">{formatSongLength(songLength)}</p>
+        {/* Integrated Song Title and Audio Controls */}
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent backdrop-blur-md p-3">
+          <div className="flex items-center justify-between">
+            <div className="flex-1 min-w-0">
+              <h4 className="text-white font-bold text-lg mb-1 truncate">{songTitle}</h4>
+              <p className="text-gray-300 text-sm">
+                {formatSongLength(songLength)} • {selectedVocal.charAt(0).toUpperCase() + selectedVocal.slice(1)} Voice
+              </p>
             </div>
-
-            <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-              <div className="flex items-center space-x-2 mb-1">
-                <Mic className="w-4 h-4 text-pink-400" />
-                <span className="text-xs text-gray-400">Voice</span>
-              </div>
-              <p className="text-white font-medium capitalize">{selectedVocal}</p>
-            </div>
-          </div>
-
-          {/* Lyrics Preview */}
-          <div className="bg-white/5 rounded-lg p-4 border border-white/10">
-            <div className="flex items-center space-x-3 mb-2">
-              <User className="w-5 h-5 text-green-400" />
-              <span className="text-sm font-medium text-gray-300">Lyrics Preview</span>
-            </div>
-            <p className="text-gray-300 text-sm italic leading-relaxed">
-              "{getPreviewLyrics(lyrics)}"
-            </p>
-          </div>
-
-          {/* Audio Player */}
-          <div className="bg-gradient-to-r from-green-500/10 to-blue-500/10 rounded-xl p-4 border border-green-500/20">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-green-500/20 rounded-full flex items-center justify-center">
-                  <Music className="w-4 h-4 text-green-400" />
-                </div>
-                                 <div>
-                   <p className="text-white font-medium text-sm">Preview Audio</p>
-                   <p className="text-gray-400 text-xs">
-                     {currentGenerationNumber && totalGenerations 
-                       ? `Generation ${currentGenerationNumber} of ${totalGenerations} • Click to preview`
-                       : 'Click to preview your song'
-                     }
-                   </p>
-                 </div>
-              </div>
+            
+            <div className="flex items-center space-x-2 ml-3">
+              {/* Previous Audio Arrow */}
+              {hasMultipleAudio && (
+                <button
+                  onClick={onPreviousAudio}
+                  className="w-8 h-8 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center transition-all duration-200 backdrop-blur-sm border border-white/20 shadow-lg hover:shadow-xl hover:scale-105"
+                  title="Previous Audio"
+                >
+                  <ChevronLeft className="w-3 h-3 text-white" />
+                </button>
+              )}
               
               <button
                 onClick={handlePlayPause}
-                className="w-12 h-12 bg-green-500/20 hover:bg-green-500/30 rounded-full flex items-center justify-center transition-colors border border-green-500/30 flex-shrink-0"
+                className="w-12 h-12 bg-gradient-to-r from-green-500/20 to-blue-500/20 hover:from-green-500/30 hover:to-blue-500/30 rounded-full flex items-center justify-center transition-all duration-200 border border-green-500/30 shadow-lg hover:shadow-xl transform hover:scale-105 backdrop-blur-sm"
                 title={isPlaying ? 'Pause' : 'Play'}
               >
                 {isPlaying ? (
                   <Pause className="w-6 h-6 text-green-400" />
                 ) : (
-                  <Play className="w-6 h-6 text-green-400" />
+                  <Play className="w-6 h-6 text-green-400 ml-0.5" />
                 )}
               </button>
+              
+              {/* Next Audio Arrow */}
+              {hasMultipleAudio && (
+                <button
+                  onClick={onNextAudio}
+                  className="w-8 h-8 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center transition-all duration-200 backdrop-blur-sm border border-white/20 shadow-lg hover:shadow-xl hover:scale-105"
+                  title="Next Audio"
+                >
+                  <ChevronRight className="w-3 h-3 text-white" />
+                </button>
+              )}
             </div>
-
-            {/* Progress Bar */}
-            {(isPlaying || currentTime > 0) && (
-              <div className="space-y-2">
-                <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-gradient-to-r from-green-400 to-blue-400 rounded-full transition-all duration-200"
-                    style={{ width: duration > 0 ? `${(currentTime / duration) * 100}%` : '0%' }}
-                  />
-                </div>
-                
-                <div className="flex justify-between text-xs text-gray-400">
-                  <span>{formatTime(currentTime)}</span>
-                  <span>{duration > 0 ? formatTime(duration) : '--:--'}</span>
-                </div>
-              </div>
-            )}
           </div>
+
+          {/* Progress Bar */}
+          {(isPlaying || currentTime > 0) && (
+            <div className="mt-3 space-y-2">
+              <div className="w-full h-2 bg-white/20 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-gradient-to-r from-green-400 via-blue-400 to-purple-400 rounded-full transition-all duration-200 shadow-sm"
+                  style={{ width: duration > 0 ? `${(currentTime / duration) * 100}%` : '0%' }}
+                />
+              </div>
+              
+              <div className="flex justify-between text-xs text-gray-300">
+                <span>{formatTime(currentTime)}</span>
+                <span>{duration > 0 ? formatTime(duration) : '--:--'}</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Elegant Footer Accent */}
+      <div className="h-1 bg-gradient-to-r from-purple-500 via-pink-500 to-blue-500"></div>
     </div>
   )
 } 

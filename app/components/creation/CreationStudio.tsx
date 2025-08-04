@@ -58,6 +58,12 @@ export default function CreationStudio() {
   const [isSongGenerating, setIsSongGenerating] = useState(false)
   const [currentGenerationNumber, setCurrentGenerationNumber] = useState<number>(0)
   const [totalGenerations, setTotalGenerations] = useState<number>(0)
+  
+  // Navigation state for cached avatars and songs
+  const [avatarHistory, setAvatarHistory] = useState<any[]>([])
+  const [songHistory, setSongHistory] = useState<any[]>([])
+  const [currentAvatarIndex, setCurrentAvatarIndex] = useState<number>(0)
+  const [currentSongIndex, setCurrentSongIndex] = useState<number>(0)
 
   // Session storage key
   const SESSION_KEY = 'melodygram_creation_session'
@@ -227,6 +233,57 @@ export default function CreationStudio() {
   const handleGenerationInfoChange = (generationNumber: number, totalCount: number) => {
     setCurrentGenerationNumber(generationNumber)
     setTotalGenerations(totalCount)
+  }
+
+  // Navigation functions for avatars
+  const handlePreviousAvatar = () => {
+    if (avatarHistory.length > 1) {
+      const newIndex = currentAvatarIndex > 0 ? currentAvatarIndex - 1 : avatarHistory.length - 1
+      setCurrentAvatarIndex(newIndex)
+      setGeneratedImageUrl(avatarHistory[newIndex].imageUrl)
+    }
+  }
+
+  const handleNextAvatar = () => {
+    if (avatarHistory.length > 1) {
+      const newIndex = currentAvatarIndex < avatarHistory.length - 1 ? currentAvatarIndex + 1 : 0
+      setCurrentAvatarIndex(newIndex)
+      setGeneratedImageUrl(avatarHistory[newIndex].imageUrl)
+    }
+  }
+
+  // Navigation functions for songs
+  const handlePreviousSong = () => {
+    if (songHistory.length > 1) {
+      const newIndex = currentSongIndex > 0 ? currentSongIndex - 1 : songHistory.length - 1
+      setCurrentSongIndex(newIndex)
+      setGeneratedSongUrl(songHistory[newIndex].audioUrl)
+      setSongTitle(songHistory[newIndex].title || songTitle)
+      setSelectedVocal(songHistory[newIndex].selectedVocal || selectedVocal)
+      setSongLength(songHistory[newIndex].songLength || songLength)
+    }
+  }
+
+  const handleNextSong = () => {
+    if (songHistory.length > 1) {
+      const newIndex = currentSongIndex < songHistory.length - 1 ? currentSongIndex + 1 : 0
+      setCurrentSongIndex(newIndex)
+      setGeneratedSongUrl(songHistory[newIndex].audioUrl)
+      setSongTitle(songHistory[newIndex].title || songTitle)
+      setSelectedVocal(songHistory[newIndex].selectedVocal || selectedVocal)
+      setSongLength(songHistory[newIndex].songLength || songLength)
+    }
+  }
+
+  // Callbacks to receive history updates from child components
+  const handleAvatarHistoryUpdate = (history: any[], currentIndex: number = 0) => {
+    setAvatarHistory(history)
+    setCurrentAvatarIndex(currentIndex)
+  }
+
+  const handleSongHistoryUpdate = (history: any[], currentIndex: number = 0) => {
+    setSongHistory(history)
+    setCurrentSongIndex(currentIndex)
   }
 
   // Auto-generate title when lyrics change (with debounce)
@@ -608,6 +665,7 @@ export default function CreationStudio() {
             generatedImageUrl={generatedImageUrl}
             showValidation={hasAvatarComplete}
             selectedGender={selectedVocal as 'male' | 'female'}
+            onHistoryUpdate={handleAvatarHistoryUpdate}
           />
         </div>
 
@@ -648,6 +706,7 @@ export default function CreationStudio() {
             onSongLengthChange={setSongLength}
             onVocalChange={setSelectedVocal}
             showValidation={true}
+            onHistoryUpdate={handleSongHistoryUpdate}
           />
         </div>
 
@@ -676,6 +735,12 @@ export default function CreationStudio() {
               currentGenerationNumber={currentGenerationNumber}
               totalGenerations={totalGenerations}
               lyrics={lyrics}
+              hasMultipleAvatars={avatarHistory.length > 1}
+              hasMultipleAudio={songHistory.length > 1}
+              onPreviousAvatar={handlePreviousAvatar}
+              onNextAvatar={handleNextAvatar}
+              onPreviousAudio={handlePreviousSong}
+              onNextAudio={handleNextSong}
             />
           </div>
         )}

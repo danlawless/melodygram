@@ -70,7 +70,7 @@ class LemonSliceApiService {
         audio: request.audio,
         model: request.model || 'V2.5',
         resolution: request.resolution || '320', // Use 320px for faster processing and lower costs 
-        animation_style: request.animation_style || 'autoselect',
+        animation_style: request.animation_style || 'entire_image',
         expressiveness: request.expressiveness || 0.8,
         crop_head: request.crop_head || false
       })

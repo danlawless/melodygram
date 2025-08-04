@@ -11,13 +11,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Construct an enhanced prompt for avatar/portrait generation
-    let enhancedPrompt = `Create a high-quality portrait image: ${prompt}`
+    // Construct an enhanced prompt for avatar/waist-up generation  
+    let enhancedPrompt = `Create a high-quality waist-up image: ${prompt}`
     
     if (style) enhancedPrompt += `. Style: ${style}`
     if (mood) enhancedPrompt += `. Mood: ${mood}`
     
-    enhancedPrompt += `. Professional headshot style, well-lit, clear facial features, suitable for avatar use, photorealistic, high detail, studio lighting`
+    enhancedPrompt += `. Professional waist-up portrait, business attire, properly clothed, medium shot framing, zoomed out to show upper body, not too close to face, professional lighting, clear features, suitable for avatar use, photorealistic, high detail`
 
     const response = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',

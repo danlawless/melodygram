@@ -30,17 +30,60 @@ export default function TitleInput({
       return
     }
 
+    // =============== COMPREHENSIVE GENERATE BUTTON LOGGING ===============
+    const generateContext = {
+      timestamp: new Date().toISOString(),
+      buttonType: 'TITLE_GENERATION',
+      user: {
+        sessionId: Date.now(), // Simple session identifier
+      },
+      inputData: {
+        currentTitle: title,
+        lyrics: lyrics,
+        selectedGender: selectedGender,
+        lyricsLength: lyrics.length,
+        lyricsWordCount: lyrics.trim().split(/\s+/).length
+      },
+      formValidation: {
+        hasValidLyrics: lyrics && lyrics.trim().length >= 10,
+        hasCurrentTitle: title.trim().length > 0,
+        canRegenerate: lyrics && lyrics.trim().length >= 10 && !isAutoGenerating && !isGenerating
+      },
+      systemContext: {
+        component: 'TitleInput',
+        handler: 'handleRegenerateTitle',
+        isAutoGenerating: isAutoGenerating,
+        userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'unknown'
+      }
+    }
+
+    console.log('🎯 =================== TITLE GENERATE BUTTON CLICKED ===================')
+    console.log('🎯 FULL CONTEXT:', JSON.stringify(generateContext, null, 2))
+    console.log('🎯 ======================================================================')
+    // =========================================================================
+
     setIsGenerating(true)
 
     try {
       console.log('🔄 Regenerating title, current:', title)
-      const result = await titleGenerationService.generateTitle({
+      
+      const titleGenParams = {
         lyrics,
         currentTitle: title, // Pass current title so AI avoids repeating it
         style: 'pop',
         mood: 'upbeat',
         selectedGender
-      })
+      }
+
+      console.log('🎯 =================== TITLE GENERATION API CALL PARAMS ===================')
+      console.log('🎯 PARAMETERS SENT TO TITLE API:', JSON.stringify(titleGenParams, null, 2))
+      console.log('🎯 =========================================================================')
+
+      const result = await titleGenerationService.generateTitle(titleGenParams)
+
+      console.log('🎯 =================== TITLE GENERATION API RESPONSE ===================')
+      console.log('🎯 RESPONSE FROM API:', JSON.stringify(result, null, 2))
+      console.log('🎯 ====================================================================')
       
       console.log('✨ New title generated:', result.title)
       
@@ -68,7 +111,7 @@ export default function TitleInput({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
-          <h2 className="text-xl font-semibold text-text-primary">Song Title</h2>
+          <h2 className="text-xl font-semibold text-text-primary">MelodyGram Title</h2>
           {showValidation && title.trim() !== '' && (
             <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
               <span className="text-white text-xs">✓</span>

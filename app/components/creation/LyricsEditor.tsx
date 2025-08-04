@@ -91,6 +91,44 @@ export default function LyricsEditor({
       return
     }
 
+    // =============== COMPREHENSIVE GENERATE BUTTON LOGGING ===============
+    const generateContext = {
+      timestamp: new Date().toISOString(),
+      buttonType: 'LYRICS_GENERATION',
+      user: {
+        sessionId: Date.now(), // Simple session identifier
+      },
+      inputData: {
+        songTitle: songTitle,
+        songLength: songLength,
+        selectedGender: selectedGender,
+        currentLyrics: lyrics,
+        currentLyricsLength: lyrics.length,
+        customOptions: {
+          showCustomOptions: showCustomOptions,
+          selectedStyle: selectedStyle,
+          selectedMood: selectedMood,
+          customPrompt: customPrompt
+        }
+      },
+      formValidation: {
+        hasValidSongLength: songLength > 0,
+        hasSelectedGender: !!selectedGender,
+        hasSongTitle: songTitle.trim().length > 0,
+        hasExistingLyrics: lyrics.trim().length > 0
+      },
+      systemContext: {
+        component: 'LyricsEditor',
+        handler: 'handleGenerateLyrics',
+        userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'unknown'
+      }
+    }
+
+    console.log('📝 =================== LYRICS GENERATE BUTTON CLICKED ===================')
+    console.log('📝 FULL CONTEXT:', JSON.stringify(generateContext, null, 2))
+    console.log('📝 ========================================================================')
+    // =========================================================================
+
     setIsGenerating(true)
     setError(null)
 
@@ -98,14 +136,24 @@ export default function LyricsEditor({
       console.log(`🎵 Generating ${songLength}s lyrics${songTitle ? ` for "${songTitle}"` : ''}`)
       
       // Use custom options if available, otherwise use defaults
-      const result = await lyricsGenerationService.generateLyrics({
+      const lyricsGenParams = {
         title: songTitle || undefined, // Pass current title if exists, otherwise let API generate one
         lengthInSeconds: songLength,
         vocalGender: selectedGender as 'male' | 'female',
         genre: showCustomOptions ? selectedStyle : 'pop',
         mood: showCustomOptions ? selectedMood : 'upbeat',
         customPrompt: showCustomOptions ? customPrompt : undefined
-      })
+      }
+
+      console.log('📝 =================== LYRICS GENERATION API CALL PARAMS ===================')
+      console.log('📝 PARAMETERS SENT TO LYRICS API:', JSON.stringify(lyricsGenParams, null, 2))
+      console.log('📝 ==========================================================================')
+
+      const result = await lyricsGenerationService.generateLyrics(lyricsGenParams)
+
+      console.log('📝 =================== LYRICS GENERATION API RESPONSE ===================')
+      console.log('📝 RESPONSE FROM API:', JSON.stringify(result, null, 2))
+      console.log('📝 =====================================================================')
 
       onLyricsChange(result.lyrics)
       

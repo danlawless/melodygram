@@ -34,6 +34,7 @@ interface SongGenerationProps {
   onSongLengthChange?: (songLength: number) => void
   onVocalChange?: (vocal: string) => void
   showValidation?: boolean
+  onHistoryUpdate?: (history: GeneratedSong[], currentIndex: number) => void
 }
 
 interface GeneratedSong {
@@ -65,7 +66,8 @@ export default function SongGeneration({
   onTitleChange,
   onSongLengthChange,
   onVocalChange,
-  showValidation = false 
+  showValidation = false,
+  onHistoryUpdate
 }: SongGenerationProps) {
   const [isGenerating, setIsGenerating] = useState(false)
   const [generationError, setGenerationError] = useState<string | null>(null)
@@ -97,6 +99,12 @@ export default function SongGeneration({
             selectedVocal: song.selectedVocal || selectedVocal // Use current setting as fallback
           }))
           setGenerationHistory(updatedSongs)
+          
+          // Notify parent component about initial history
+          if (onHistoryUpdate && updatedSongs.length > 0) {
+            onHistoryUpdate(updatedSongs, 0) // Most recent song is at index 0
+          }
+          
           if (updatedSongs.length > 0) {
             const mostRecentSong = updatedSongs[0]
             setGeneratedSong(mostRecentSong)
@@ -214,6 +222,45 @@ export default function SongGeneration({
       return
     }
 
+    // =============== COMPREHENSIVE GENERATE BUTTON LOGGING ===============
+    const generateContext = {
+      timestamp: new Date().toISOString(),
+      buttonType: 'SONG_GENERATION',
+      user: {
+        sessionId: Date.now(), // Simple session identifier
+      },
+      inputData: {
+        songTitle: songTitle,
+        lyrics: lyrics,
+        selectedVocal: selectedVocal,
+        songLength: songLength,
+        originalLyricsLength: lyrics.length,
+        lyricsWordCount: lyrics.trim().split(/\s+/).length
+      },
+      formValidation: {
+        isFormValid: isFormValid(),
+        hasLyrics: lyrics.trim().length > 0,
+        hasSongTitle: songTitle.trim().length > 0,
+        hasValidSongLength: songLength > 0,
+        hasValidVocal: !!selectedVocal
+      },
+      previousGeneration: {
+        hasExistingGeneration: !!generatedSong,
+        currentGenerationNumber: generationHistory.length + 1,
+        totalPreviousGenerations: generationHistory.length
+      },
+      systemContext: {
+        component: 'SongGeneration',
+        handler: 'handleGenerateSong',
+        userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'unknown'
+      }
+    }
+
+    console.log('🎵 =================== SONG GENERATE BUTTON CLICKED ===================')
+    console.log('🎵 FULL CONTEXT:', JSON.stringify(generateContext, null, 2))
+    console.log('🎵 =====================================================================')
+    // =========================================================================
+
     try {
       setIsGenerating(true)
       setGenerationError(null)
@@ -246,14 +293,25 @@ export default function SongGeneration({
       }
       
       console.log('🎵 Generating song with Mureka...')
+      console.log('🎵 Original Lyrics:', lyrics)
       console.log('🎵 Cleaned Lyrics:', cleanedLyrics)
-      console.log('🎵 Prompt:', prompt)
+      console.log('🎵 Generated Prompt:', prompt)
       
-             const response = await murekaApiService.generateSong({
-         lyrics: cleanedLyrics,
-         prompt: prompt,
-         model: 'mureka-7'
-       })
+      const murekaParams = {
+        lyrics: cleanedLyrics,
+        prompt: prompt,
+        model: 'mureka-7'
+      }
+      
+      console.log('🎵 =================== MUREKA API CALL PARAMS ===================')
+      console.log('🎵 PARAMETERS SENT TO MUREKA:', JSON.stringify(murekaParams, null, 2))
+      console.log('🎵 =============================================================')
+      
+      const response = await murekaApiService.generateSong(murekaParams)
+      
+      console.log('🎵 =================== MUREKA API RESPONSE ===================')
+      console.log('🎵 RESPONSE FROM MUREKA:', JSON.stringify(response, null, 2))
+      console.log('🎵 ===========================================================')
       console.log('🎵 Song generation response:', response)
       
       // Poll for completion
@@ -354,6 +412,11 @@ export default function SongGeneration({
         const updatedHistory = [newSong, ...favorites, ...keptNonFavorites]
         setGenerationHistory(updatedHistory)
         saveToSession(updatedHistory)
+        
+        // Notify parent component about history update
+        if (onHistoryUpdate) {
+          onHistoryUpdate(updatedHistory, 0) // New song is always at index 0
+        }
         
         // Notify parent component about new generation
         if (onSongGenerated) {
@@ -595,9 +658,17 @@ export default function SongGeneration({
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div>
-                <h3 className="font-medium text-white">
-                  ✅ Generation {generationHistory.length - generationHistory.findIndex(song => song.audioUrl === generatedSong.audioUrl)} - {generatedSong.title || 'Untitled'} {isPlaying ? '• Playing' : '• Ready'}
+                {/* Song Title - First Line */}
+                <h3 className="font-medium text-white mb-1">
+                  {generatedSong.title || 'Untitled'}
                 </h3>
+                
+                {/* Generation Info - Second Line */}
+                <p className="text-sm text-green-400 mb-1">
+                  ✅ Generation {generationHistory.length - generationHistory.findIndex(song => song.audioUrl === generatedSong.audioUrl)} {isPlaying ? '• Playing' : '• Ready'}
+                </p>
+                
+                {/* Timestamp - Third Line */}
                 <p className="text-sm text-gray-400">
                   {new Date(generatedSong.createdAt).toLocaleString()}
                 </p>
@@ -689,14 +760,22 @@ export default function SongGeneration({
                     
                     {/* Generation Info */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-2">
-                        <p className={`text-sm font-medium ${
-                          isCurrentSong ? 'text-green-400' : 'text-white'
-                        }`}>
-                          Generation {generationNumber} - {song.title || 'Untitled'}
-                          {isCurrentSong && <span className="text-xs ml-1">• Active</span>}
-                        </p>
-                      </div>
+                      {/* Song Title - First Line */}
+                      <p className={`text-sm font-medium mb-1 ${
+                        isCurrentSong ? 'text-white' : 'text-white'
+                      }`}>
+                        {song.title || 'Untitled'}
+                      </p>
+                      
+                      {/* Generation Info - Second Line */}
+                      <p className={`text-xs mb-1 ${
+                        isCurrentSong ? 'text-green-400' : 'text-gray-300'
+                      }`}>
+                        ✅ Generation {generationNumber}
+                        {isCurrentSong && <span className="ml-1">• Active</span>}
+                      </p>
+                      
+                      {/* Details - Third Line */}
                       <div className="flex items-center justify-between">
                         <p className="text-xs text-gray-400">
                           {new Date(song.createdAt).toLocaleTimeString()}

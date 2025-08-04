@@ -8,7 +8,7 @@ import { lemonSliceApiService } from '../../services/lemonSliceApi'
 interface ImageGenerationOptions {
   prompt: string
   style?: string
-  mood?: string
+  mood?: string  
   size?: '1024x1024' | '1024x1792' | '1792x1024'
   quality?: 'standard' | 'hd'
 }
@@ -242,7 +242,7 @@ export default function LemonSliceApiTest() {
         prompt: imagePrompt,
         style: imageStyle || undefined,
         mood: imageMood || undefined,
-        size: '1024x1024',
+          size: '1024x1024',
         quality: 'standard'
       }
 
@@ -534,7 +534,7 @@ export default function LemonSliceApiTest() {
                 <textarea
                   value={imagePrompt}
                   onChange={(e) => setImagePrompt(e.target.value)}
-                  placeholder="Describe the avatar you want to generate (e.g., 'A professional headshot of a friendly person with a warm smile')"
+                  placeholder="Describe the avatar you want to generate (e.g., 'Professional waist-up portrait of a friendly person in business attire, warm smile')"
                   className="w-full bg-black/40 border border-white/30 rounded-lg px-3 py-2 text-white placeholder-white/60 focus:ring-2 focus:ring-white/50 focus:border-white/50 backdrop-blur-sm resize-none"
                   rows={3}
                 />
@@ -550,7 +550,7 @@ export default function LemonSliceApiTest() {
                       {(imageGenerationService?.getStyleOptions?.() || [
                         { value: '', label: 'Default' },
                         { value: 'photorealistic', label: 'Photorealistic' },
-                        { value: 'portrait photography', label: 'Portrait Photography' }
+                        { value: 'waist-up photography', label: 'Waist-up Photography' }
                       ]).map((option: any) => (
                         <option key={option.value} value={option.value} className="bg-black text-white">{option.label}</option>
                       ))}
@@ -580,9 +580,9 @@ export default function LemonSliceApiTest() {
                   <label className="block text-xs font-medium text-white/80 mb-2">💡 Quick Suggestions:</label>
                   <div className="flex flex-wrap gap-2">
                     {(imageGenerationService?.getSuggestedPrompts?.() || [
-                      "A professional headshot of a friendly person with a warm smile",
-                      "Portrait of a creative artist with an inspiring expression",
-                      "Headshot of a confident business professional"
+                            "Professional waist-up shot of a friendly person, zoomed out to show torso and arms, warm smile",
+      "Medium shot of a creative artist from waist up, showing upper body, inspiring expression",
+      "Waist-up view of a confident business professional, full upper body visible, not close-up"
                     ]).slice(0, 3).map((suggestion: string, index: number) => (
                       <button
                         key={index}
