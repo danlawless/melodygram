@@ -598,6 +598,8 @@ export default function CreationStudio() {
             onSongGenerated={setGeneratedSongUrl}
             onGenerationStateChange={setIsSongGenerating}
             onGenerationInfoChange={handleGenerationInfoChange}
+            onLyricsChange={setLyrics}
+            onTitleChange={setSongTitle}
             showValidation={true}
           />
         </div>

@@ -16,7 +16,7 @@ interface FinalPreviewProps {
   currentGenerationNumber?: number
   totalGenerations?: number
   
-  // Lyrics preview
+  // Lyrics preview (should match the selected generation)
   lyrics: string
 }
 

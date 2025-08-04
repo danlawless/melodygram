@@ -29,6 +29,8 @@ interface SongGenerationProps {
   onSongGenerated?: (audioUrl: string) => void
   onGenerationStateChange?: (isGenerating: boolean) => void
   onGenerationInfoChange?: (generationNumber: number, totalCount: number) => void
+  onLyricsChange?: (lyrics: string) => void
+  onTitleChange?: (title: string) => void
   showValidation?: boolean
 }
 
@@ -38,6 +40,9 @@ interface GeneratedSong {
   targetDuration: number
   actualDuration?: number
   isPlaying?: boolean
+  // Store the lyrics and title used to generate this song
+  lyrics: string
+  title: string
 }
 
 export default function SongGeneration({ 
@@ -48,6 +53,8 @@ export default function SongGeneration({
   onSongGenerated,
   onGenerationStateChange,
   onGenerationInfoChange,
+  onLyricsChange,
+  onTitleChange,
   showValidation = false 
 }: SongGenerationProps) {
   const [isGenerating, setIsGenerating] = useState(false)
@@ -75,6 +82,14 @@ export default function SongGeneration({
             const mostRecentSong = songs[0]
             setGeneratedSong(mostRecentSong)
             setDuration(mostRecentSong.targetDuration)
+            
+            // Restore lyrics and title from the most recent generation
+            if (onLyricsChange && mostRecentSong.lyrics) {
+              onLyricsChange(mostRecentSong.lyrics)
+            }
+            if (onTitleChange && mostRecentSong.title) {
+              onTitleChange(mostRecentSong.title)
+            }
             
             // Notify parent about current generation (most recent is #1)
             if (onGenerationInfoChange) {
@@ -239,7 +254,9 @@ export default function SongGeneration({
         const newSong: GeneratedSong = {
           audioUrl,
           createdAt: new Date().toISOString(),
-          targetDuration: songLength
+          targetDuration: songLength,
+          lyrics: cleanedLyrics,
+          title: songTitle
         }
         
         setGeneratedSong(newSong)
@@ -399,13 +416,21 @@ export default function SongGeneration({
       onSongGenerated(song.audioUrl)
     }
     
+    // Update lyrics and title to match the selected generation
+    if (onLyricsChange && song.lyrics) {
+      onLyricsChange(song.lyrics)
+    }
+    if (onTitleChange && song.title) {
+      onTitleChange(song.title)
+    }
+    
     // Calculate and notify generation number
     const generationNumber = generationHistory.length - generationHistory.findIndex(s => s.audioUrl === song.audioUrl)
     if (onGenerationInfoChange) {
       onGenerationInfoChange(generationNumber, generationHistory.length)
     }
     
-    console.log('🔄 Switched to generation:', generationNumber, 'URL:', song.audioUrl?.substring(0, 50) + '...')
+    console.log('🔄 Switched to generation:', generationNumber, 'with lyrics:', song.lyrics?.substring(0, 50) + '...', 'title:', song.title)
   }
 
   const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
