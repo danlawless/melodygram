@@ -278,7 +278,7 @@ export default function SongGeneration({
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [pendingDeletes, setPendingDeletes] = useState<Set<string>>(new Set())
-  const [isDragging, setIsDragging] = useState<'start' | 'end' | 'playback' | null>(null)
+  const [isDragging, setIsDragging] = useState<'start' | 'end' | null>(null)
   const [waveformData, setWaveformData] = useState<number[]>([])
   const [isLoadingWaveform, setIsLoadingWaveform] = useState(false)
 
@@ -828,6 +828,8 @@ export default function SongGeneration({
             setDuration(generatedSong.actualDuration || audio.duration)
           })
 
+          let isSeekingToStart = false // Prevent infinite loop
+          
           audio.addEventListener('timeupdate', () => {
             const currentTime = audio.currentTime
             const selection = generatedSong.audioSelection
@@ -836,12 +838,28 @@ export default function SongGeneration({
             if (selection) {
               // Auto-pause when reaching end of selection
               if (currentTime >= selection.endTime) {
-              audio.pause()
-                audio.currentTime = selection.startTime // Reset to selection start
-              setIsPlaying(false)
+                console.log('🎵 Reached end of selection, resetting to start')
+                audio.pause()
+                isSeekingToStart = true
+                audio.currentTime = selection.startTime
+                setIsPlaying(false)
                 setCurrentTime(selection.startTime)
-                console.log('🎵 Auto-paused at selection end, reset to selection start')
-              } else {
+                setTimeout(() => { isSeekingToStart = false }, 100) // Reset flag after brief delay
+                return
+              }
+              
+              // If we're before the selection start, jump to start (with loop prevention)
+              if (currentTime < selection.startTime && !isSeekingToStart) {
+                console.log('🎵 Before selection start, jumping to:', selection.startTime)
+                isSeekingToStart = true
+                audio.currentTime = selection.startTime
+                setCurrentTime(selection.startTime)
+                setTimeout(() => { isSeekingToStart = false }, 100) // Reset flag after brief delay
+                return
+              }
+              
+              // Update current time if we're within the selection
+              if (currentTime >= selection.startTime && currentTime <= selection.endTime) {
                 setCurrentTime(currentTime)
               }
             } else {
@@ -920,12 +938,13 @@ export default function SongGeneration({
     console.log('🔄 Switched to generation:', generationNumber, 'with lyrics:', song.lyrics?.substring(0, 50) + '...', 'title:', song.title)
   }
 
-  const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
+  // Handle progress bar click/tap to seek to position
+  const handleProgressSeek = (clientX: number, currentTarget: Element) => {
     if (!audioElement || !duration || !generatedSong) return
     
-    const rect = e.currentTarget.getBoundingClientRect()
-    const clickX = e.clientX - rect.left
-    const clickPercent = clickX / rect.width
+    const rect = currentTarget.getBoundingClientRect()
+    const clickX = clientX - rect.left
+    const clickPercent = Math.max(0, Math.min(clickX / rect.width, 1))
     
     const selection = generatedSong.audioSelection
     let newTime: number
@@ -934,13 +953,29 @@ export default function SongGeneration({
       // Map click to within the selected segment
       newTime = selection.startTime + (clickPercent * selection.duration)
       newTime = Math.max(selection.startTime, Math.min(newTime, selection.endTime))
+      console.log('🎵 Seeking to time within selection:', newTime, '(selection:', selection.startTime, '-', selection.endTime, ')')
     } else {
       // No selection, use full duration
       newTime = Math.min(clickPercent * duration, duration)
+      console.log('🎵 Seeking to time in full song:', newTime)
     }
     
     audioElement.currentTime = newTime
     setCurrentTime(newTime)
+  }
+
+  const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Don't handle clicks if we're in the middle of dragging
+    if (isDragging) return
+    handleProgressSeek(e.clientX, e.currentTarget)
+  }
+
+  const handleProgressTouch = (e: React.TouchEvent<HTMLDivElement>) => {
+    // Don't handle touches if we're in the middle of dragging
+    if (isDragging) return
+    if (e.touches.length > 0) {
+      handleProgressSeek(e.touches[0].clientX, e.currentTarget)
+    }
   }
 
   // Audio selection handlers for inline editing (preview only - actual clipping happens at MelodyGram generation)
@@ -1008,27 +1043,27 @@ export default function SongGeneration({
     }
   }
 
-  // Handle dragging of selection bars and playback position  
-  const handleSelectionMouseDown = (e: React.MouseEvent, handle: 'start' | 'end' | 'playback') => {
+  // Handle dragging of selection bars  
+  const handleSelectionMouseDown = (e: React.MouseEvent, handle: 'start' | 'end') => {
     e.preventDefault()
     e.stopPropagation()
     setIsDragging(handle)
     
-    // Pause audio when starting to drag selection handles (but not playback scrubbing)
-    if ((handle === 'start' || handle === 'end') && audioElement && !audioElement.paused) {
+    // Pause audio when starting to drag selection handles
+    if (audioElement && !audioElement.paused) {
       audioElement.pause()
       setIsPlaying(false)
     }
   }
 
   // Handle touch events for mobile support
-  const handleSelectionTouchStart = (e: React.TouchEvent, handle: 'start' | 'end' | 'playback') => {
+  const handleSelectionTouchStart = (e: React.TouchEvent, handle: 'start' | 'end') => {
     e.preventDefault()
     e.stopPropagation()
     setIsDragging(handle)
     
-    // Pause audio when starting to drag selection handles (but not playback scrubbing)
-    if ((handle === 'start' || handle === 'end') && audioElement && !audioElement.paused) {
+    // Pause audio when starting to drag selection handles
+    if (audioElement && !audioElement.paused) {
       audioElement.pause()
       setIsPlaying(false)
     }
@@ -1048,29 +1083,17 @@ export default function SongGeneration({
       duration: generatedSong.originalDuration
     }
 
-    if (isDragging === 'playback') {
-      // Handle playback position dragging
-      const clampedTime = Math.max(currentSelection.startTime, Math.min(timePosition, currentSelection.endTime))
-      
-      // Update audio element current time
-      if (audioElement) {
-        audioElement.currentTime = clampedTime
-      }
-      setCurrentTime(clampedTime)
-      
-    } else {
-      // Handle selection boundary dragging
-      let newSelection = { ...currentSelection }
+    // Handle selection boundary dragging
+    let newSelection = { ...currentSelection }
 
-      if (isDragging === 'start') {
-        newSelection.startTime = Math.max(0, Math.min(timePosition, currentSelection.endTime - 1))
-      } else if (isDragging === 'end') {
-        newSelection.endTime = Math.min(generatedSong.originalDuration, Math.max(timePosition, currentSelection.startTime + 1))
-      }
-
-      newSelection.duration = newSelection.endTime - newSelection.startTime
-      updateAudioSelection(newSelection)
+    if (isDragging === 'start') {
+      newSelection.startTime = Math.max(0, Math.min(timePosition, currentSelection.endTime - 1))
+    } else if (isDragging === 'end') {
+      newSelection.endTime = Math.min(generatedSong.originalDuration, Math.max(timePosition, currentSelection.startTime + 1))
     }
+
+    newSelection.duration = newSelection.endTime - newSelection.startTime
+    updateAudioSelection(newSelection)
   }
 
   const handleSelectionMouseMove = (e: React.MouseEvent) => {
@@ -1267,10 +1290,17 @@ export default function SongGeneration({
             <div 
               className="relative h-16 bg-gray-800/50 rounded-lg cursor-pointer select-none overflow-hidden"
               onClick={handleProgressClick}
+              onTouchEnd={(e) => {
+                // If we were dragging, end the drag; otherwise handle as a tap-to-seek
+                if (isDragging) {
+                  handleSelectionMouseUp()
+                } else {
+                  handleProgressTouch(e)
+                }
+              }}
               onMouseMove={handleSelectionMouseMove}
               onMouseUp={handleSelectionMouseUp}
               onTouchMove={handleSelectionTouchMove}
-              onTouchEnd={handleSelectionMouseUp}
             >
               {/* Waveform Background */}
               {isLoadingWaveform ? (
@@ -1324,23 +1354,7 @@ export default function SongGeneration({
                     }}
                   />
                   
-                  {/* Current time indicator - draggable */}
-                  {currentTime >= generatedSong.audioSelection.startTime && currentTime <= generatedSong.audioSelection.endTime && (
-                    <div 
-                      className={`absolute top-0 bottom-0 w-4 sm:w-3 bg-yellow-400/80 rounded-full z-20 shadow-lg cursor-grab active:cursor-grabbing hover:bg-yellow-300 active:bg-yellow-300 transition-colors touch-manipulation ${
-                        isDragging === 'playback' ? 'bg-yellow-300 scale-110' : ''
-                      }`}
-                      style={{ left: `${(currentTime / generatedSong.originalDuration) * 100 - 2}%` }}
-                      onMouseDown={(e) => handleSelectionMouseDown(e, 'playback')}
-                      onTouchStart={(e) => handleSelectionTouchStart(e, 'playback')}
-                      title="Drag to scrub through audio"
-                    >
-                      <div className="w-full h-full flex items-center justify-center">
-                        <div className="w-1 h-8 bg-white/90 rounded-full shadow-sm" />
-                      </div>
-                    </div>
-                  )}
-                  
+
                   {/* Start handle */}
                   <div 
                     className={`absolute top-0 bottom-0 w-6 sm:w-4 bg-green-500 rounded-l-lg cursor-ew-resize z-30 hover:bg-green-400 active:bg-green-400 transition-colors shadow-lg touch-manipulation ${
