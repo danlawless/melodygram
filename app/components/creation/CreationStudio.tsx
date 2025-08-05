@@ -1167,8 +1167,8 @@ export default function CreationStudio() {
       {showCreditConfirmModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 overflow-y-auto">
           <div className="min-h-screen flex items-start justify-center p-4 py-8">
-            <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 w-full max-w-4xl shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="text-center space-y-4">
+            <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 w-full max-w-4xl shadow-2xl max-h-[80vh] overflow-y-auto">
+            <div className="text-center space-y-4 pb-24">
               {/* Header */}
               <div className="flex items-center justify-center space-x-2 mb-4">
                 <Zap className="w-6 h-6 text-yellow-400" />
@@ -1252,15 +1252,6 @@ export default function CreationStudio() {
                 </div>
               </div>
 
-              {/* Selection Info */}
-              {songHistory && songHistory.length > 0 && songHistory[currentSongIndex]?.audioSelection && (
-                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
-                  <p className="text-sm text-blue-400">
-                    💡 You've selected a {Math.round(songHistory[currentSongIndex].audioSelection!.duration)}s segment. 
-                    Only this portion will be used in your MelodyGram.
-                  </p>
-                </div>
-              )}
 
               {/* Insufficient Credits Warning */}
               {(() => {
@@ -1377,7 +1368,7 @@ export default function CreationStudio() {
                       return getCreditsForLength(songLength)
                     })()
                     const hasEnoughCredits = creditSystemService.getUserCredits().balance >= costCredits
-                    return hasEnoughCredits ? `Generate MelodyGram (${costCredits} credits)` : 'Insufficient Credits'
+                    return hasEnoughCredits ? `Generate MelodyGram` : 'Insufficient Credits'
                   })()}
                 </button>
               </div>
