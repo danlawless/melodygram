@@ -60,8 +60,8 @@ export default function Home() {
         />
       )}
       
-      {/* Main Content Area - Takes remaining space */}
-      <div className="flex-1 min-h-0">
+      {/* Main Content Area - Takes remaining space with header offset */}
+      <div className={`flex-1 min-h-0 ${isMainScreen ? 'pt-[72px]' : ''}`}>
         <div className="h-full overflow-auto">
           {renderCurrentScreen()}
         </div>
