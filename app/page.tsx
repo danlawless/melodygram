@@ -60,9 +60,11 @@ export default function Home() {
         />
       )}
       
-      {/* Main Content Area - Takes remaining space with top padding for fixed header */}
-      <div className={`flex-1 overflow-auto ${isMainScreen ? 'pt-20' : ''}`}>
-        {renderCurrentScreen()}
+      {/* Main Content Area - Takes remaining space */}
+      <div className="flex-1 min-h-0">
+        <div className="h-full overflow-auto">
+          {renderCurrentScreen()}
+        </div>
       </div>
       
       {/* Bottom Navigation - Fixed at bottom */}

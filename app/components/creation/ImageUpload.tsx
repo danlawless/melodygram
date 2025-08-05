@@ -810,6 +810,7 @@ export default function ImageUpload({ uploadedImage, onImageUpload, onImageGener
             src={preview}
             alt={generatedImageUrl ? "Generated avatar" : "Uploaded preview"}
             className="w-full h-full object-cover"
+            style={{ minHeight: '200px' }}
             onError={(e) => {
               console.warn('🚫 Avatar image failed to load (likely expired URL):', preview)
               // Show a placeholder or regeneration hint
