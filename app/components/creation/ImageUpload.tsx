@@ -526,23 +526,16 @@ export default function ImageUpload({ uploadedImage, onImageUpload, onImageGener
           style: selectedStyle || 'photorealistic',
           mood: selectedMood || 'friendly',
           favorite: false,
-          isTemporaryUrl: !response.proxiedUrl, // Only external URLs are temporary
+          isTemporaryUrl: false, // All URLs are now permanent via ngrok storage
           gender: selectedGender // Track gender for voice/avatar matching
         }
         
         await addToAvatarHistory(newAvatar)
         
-        // Only attempt file conversion for very specific use cases
-        if (response.proxiedUrl) {
-          // Only try file conversion for same-origin URLs
-          try {
-            const file = await imageGenerationService.urlToFile(response.imageUrl, 'generated-avatar.png')
-            onImageUpload(file)
-            console.log(`✅ Image converted to file: ${file.name} (${file.size} bytes)`)
-          } catch (conversionError) {
-            console.warn(`⚠️ Could not convert to file: ${conversionError}`)
-          }
-        }
+        // File conversion is no longer needed since we have permanent URLs
+        // The permanent ngrok URL can be used directly by LemonSlice
+        console.log('✅ Using permanent URL - no file conversion needed')
+        console.log('🎯 Permanent URL ready for LemonSlice API:', finalImageUrl)
       }
     } catch (error) {
       console.error('Error generating avatar:', error)

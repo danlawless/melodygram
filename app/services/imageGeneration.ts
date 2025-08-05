@@ -11,6 +11,7 @@ export interface ImageGenerationResponse {
   revisedPrompt?: string
   source: 'openai'
   proxiedUrl?: string // URL served through our proxy to avoid CORS issues
+  originalUrl?: string // Original OpenAI URL before permanent storage
 }
 
 class ImageGenerationService {
@@ -40,14 +41,33 @@ class ImageGenerationService {
 
       const data = await response.json()
       
-      // Create a proxied URL to serve the image from our domain (avoids CORS issues)
-      const proxiedUrl = `/api/proxy-image?url=${encodeURIComponent(data.imageUrl)}`
+      console.log('🖼️ OpenAI image generated, downloading and storing permanently...')
       
-      return {
-        imageUrl: data.imageUrl, // Original external URL
-        proxiedUrl: proxiedUrl,  // Our proxied URL (no CORS issues)
-        revisedPrompt: data.revisedPrompt,
-        source: 'openai'
+      try {
+        // Download the image immediately and store it via ngrok
+        const permanentUrl = await this.storeImagePermanently(data.imageUrl)
+        
+        console.log('✅ Image stored permanently:', permanentUrl)
+        
+        return {
+          imageUrl: permanentUrl,    // Use permanent ngrok URL as primary
+          proxiedUrl: permanentUrl,  // Same permanent URL (no expiration)
+          revisedPrompt: data.revisedPrompt,
+          source: 'openai',
+          originalUrl: data.imageUrl // Keep original for reference
+        }
+      } catch (storageError) {
+        console.warn('⚠️ Failed to store image permanently, using temporary URL:', storageError)
+        
+        // Fallback to proxied URL if permanent storage fails
+        const proxiedUrl = `/api/proxy-image?url=${encodeURIComponent(data.imageUrl)}`
+        
+        return {
+          imageUrl: data.imageUrl,   // Original external URL
+          proxiedUrl: proxiedUrl,    // Our proxied URL (temporary)
+          revisedPrompt: data.revisedPrompt,
+          source: 'openai'
+        }
       }
     } catch (error) {
       console.error('OpenAI image generation failed:', error)
@@ -68,6 +88,44 @@ class ImageGenerationService {
     } catch (error) {
       console.error('Image generation failed:', error)
       throw new Error('Image generation failed. Please try again with a different prompt.')
+    }
+  }
+
+  /**
+   * Store image permanently via backend API (avoids CORS issues)
+   */
+  async storeImagePermanently(imageUrl: string): Promise<string> {
+    try {
+      console.log('🖼️ Frontend: Calling backend to store image permanently...')
+      console.log('🖼️ Frontend: OpenAI URL:', imageUrl)
+      
+      // Call our backend API to download and store the image
+      // Backend can fetch OpenAI URLs without CORS restrictions
+      const response = await fetch('/api/store-image-permanently', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ imageUrl })
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(`Backend storage failed: ${response.status} - ${errorData.details || 'Unknown error'}`)
+      }
+      
+      const data = await response.json()
+      
+      if (!data.success) {
+        throw new Error(`Backend storage failed: ${data.error}`)
+      }
+      
+      console.log('✅ Frontend: Image stored permanently via backend:', data.permanentUrl)
+      return data.permanentUrl
+      
+    } catch (error) {
+      console.error('❌ Frontend: Failed to store image permanently:', error)
+      throw error
     }
   }
 

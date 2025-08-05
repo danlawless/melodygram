@@ -19,6 +19,20 @@ const nextConfig = {
           },
         ],
       },
+      {
+        // Add bypass header for temp avatar images to work with ngrok warning page
+        source: '/temp-avatars/:path*',
+        headers: [
+          {
+            key: 'ngrok-skip-browser-warning',
+            value: 'true',
+          },
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: '*',
+          },
+        ],
+      },
     ]
   },
 }
