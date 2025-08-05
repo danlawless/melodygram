@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback } from 'react'
-import { Zap, Loader2, Wand2, Music, Upload, User, Play, Clock, ChevronDown, X } from 'lucide-react'
+import { Zap, Loader2, Wand2, Music, Upload, User, Play, Clock, ChevronDown, X, Terminal } from 'lucide-react'
 import ImageUpload from './ImageUpload'
 import LyricsEditor from './LyricsEditor'
 import SongGeneration from './SongGeneration'
@@ -19,6 +19,8 @@ import SongLengthSelector from './SongLengthSelector'
 import PathNavigation from './PathNavigation'
 import { toastService } from '../../services/toastService'
 import { creditSystemService, getCreditsForLength } from '../../services/creditSystem'
+import { debugLogger } from '../../services/debugLogger'
+import DebugModal from '../debug/DebugModal'
 
 // Helper function for duration instructions
 const createDurationInstruction = (seconds: number): string => {
@@ -74,10 +76,17 @@ export default function CreationStudio() {
   // Modal state
   const [showCreditConfirmModal, setShowCreditConfirmModal] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
+  const [showDebugModal, setShowDebugModal] = useState(false)
+  const [isDebugMode, setIsDebugMode] = useState(false)
+
+  // Check for debug mode on mount
+  useEffect(() => {
+    setIsDebugMode(debugLogger.isDebugMode())
+  }, [])
 
   // Prevent background scrolling when modal is open
   useEffect(() => {
-    if (showCreditConfirmModal) {
+    if (showCreditConfirmModal || showDebugModal) {
       document.body.style.overflow = 'hidden'
       console.log('🔒 Background scrolling disabled (modal open)')
     } else {
@@ -89,7 +98,7 @@ export default function CreationStudio() {
     return () => {
       document.body.style.overflow = 'unset'
     }
-  }, [showCreditConfirmModal])
+  }, [showCreditConfirmModal, showDebugModal])
 
   // Session storage key
   const SESSION_KEY = 'melodygram_creation_session'
@@ -523,6 +532,14 @@ export default function CreationStudio() {
     // Close the modal
     setShowCreditConfirmModal(false)
     
+    // Start debug logging if debug mode is enabled
+    if (isDebugMode) {
+      debugLogger.startCapturing()
+      console.log('🐛 =================== DEBUG MODE ACTIVATED ===================')
+      console.log('🐛 All logs are being captured for debugging purposes')
+      console.log('🐛 =========================================================')
+    }
+    
     if (dryRun) {
       console.log('🧪 =================== DRY RUN MODE - NO ACTUAL API CALLS ===================')
       console.log('🧪 This will test everything without sending to LemonSlice (no cost)')
@@ -922,14 +939,27 @@ export default function CreationStudio() {
       }
     } finally {
       setIsGenerating(false)
+      
+      // Stop debug logging and show modal if debug mode is enabled
+      if (isDebugMode) {
+        debugLogger.stopCapturing()
+        console.log('🐛 =================== DEBUG MODE COMPLETE ===================')
+        console.log('🐛 Log capture stopped. Click the debug button to view logs.')
+        console.log('🐛 ========================================================')
+        
+        // Auto-show debug modal after generation completes
+        setTimeout(() => {
+          setShowDebugModal(true)
+        }, 1000)
+      }
     }
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900 pb-24">
       {/* Elegant Header */}
-      <div className="bg-black/60 backdrop-blur-xl border-b border-white/10">
-        <div className="p-6">
+      <div className="bg-black border-b border-white/10" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+        <div className="px-6 pt-4 pb-6">
           {/* Title Section */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
@@ -942,12 +972,26 @@ export default function CreationStudio() {
               </div>
             </div>
             
-            {/* Tip Button */}
-            <TipButton
-              title="Song Creation Tips"
-              content="Start by choosing your vocal preference, then add your content. Your gender selection will influence the avatar generation, lyrics style, and vocal characteristics throughout the entire creation process."
-              position="bottom"
-            />
+            <div className="flex items-center space-x-3">
+              {/* Debug Button - Only show in debug mode */}
+              {isDebugMode && (
+                <button
+                  onClick={() => setShowDebugModal(true)}
+                  className="flex items-center space-x-2 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm"
+                  title="Open debug console"
+                >
+                  <Terminal className="w-4 h-4" />
+                  <span className="hidden sm:inline">Debug</span>
+                </button>
+              )}
+              
+              {/* Tip Button */}
+              <TipButton
+                title="Song Creation Tips"
+                content="Start by choosing your vocal preference, then add your content. Your gender selection will influence the avatar generation, lyrics style, and vocal characteristics throughout the entire creation process."
+                position="bottom"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -1377,6 +1421,12 @@ export default function CreationStudio() {
         </div>
         </div>
       )}
+
+      {/* Debug Modal */}
+      <DebugModal 
+        isOpen={showDebugModal}
+        onClose={() => setShowDebugModal(false)}
+      />
     </div>
   )
 } 
