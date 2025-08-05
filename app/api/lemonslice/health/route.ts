@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 
 // Force this route to use Node.js runtime to avoid static generation issues
 export const runtime = 'nodejs'
+// Force dynamic rendering since we make external API calls
+export const dynamic = 'force-dynamic'
 
 const LEMONSLICE_API_BASE_URL = process.env.NEXT_PUBLIC_LEMONSLICE_API_BASE_URL || 'https://lemonslice.com/api'
 const LEMONSLICE_API_KEY = process.env.LEMONSLICE_API_KEY || 'sk-1990426d-aff0-4c6d-ab38-6aea2af25018'
@@ -24,11 +26,13 @@ export async function GET() {
       }, { status: 503 })
     }
     
-    const response = await fetch(`${LEMONSLICE_API_BASE_URL}/health`, {
+    // LemonSlice API doesn't have a dedicated health endpoint
+    // Test connectivity by checking a real endpoint (lightweight generations call)
+    const response = await fetch(`${LEMONSLICE_API_BASE_URL}/v2/generations?limit=1`, {
       method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
         'Authorization': `Bearer ${LEMONSLICE_API_KEY}`,
+        'Accept': 'application/json'
       },
     })
 
@@ -37,7 +41,14 @@ export async function GET() {
     }
 
     const data = await response.json()
-    return NextResponse.json(data)
+    // Return health status based on successful API response
+    return NextResponse.json({
+      status: 'healthy',
+      lemonslice_api: 'connected',
+      message: 'LemonSlice API is accessible',
+      test_endpoint: '/v2/generations',
+      response_status: response.status
+    })
 
   } catch (error) {
     console.error('LemonSlice health check failed:', error)
