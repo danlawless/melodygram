@@ -285,6 +285,53 @@ export default function SongGeneration({
   // Audio gender analysis hook
   const { analyzeAudioGender, isAnalyzing: isAnalyzingGender, result: genderAnalysisResult } = useAudioGenderAnalysis()
 
+  // Cleanup function for audio element
+  const cleanupAudioElement = (audio: HTMLAudioElement) => {
+    if (audio) {
+      audio.pause()
+      audio.currentTime = 0
+      // Remove all event listeners by setting src to empty and loading
+      audio.src = ''
+      audio.load()
+    }
+  }
+
+  // Force stop audio - more aggressive approach for mobile
+  const forceStopAudio = () => {
+    if (audioElement) {
+      console.log('🎵 🛑 Force stopping audio')
+      audioElement.pause()
+      audioElement.currentTime = 0
+      setIsPlaying(false)
+      
+      // Additional mobile-specific stop attempts
+      try {
+        audioElement.load() // Forces audio to stop loading
+      } catch (e) {
+        console.log('🎵 Load() failed, continuing...')
+      }
+      
+      // Double-check that we're really paused
+      setTimeout(() => {
+        if (audioElement && !audioElement.paused) {
+          console.log('🎵 🔄 Audio still playing, trying again...')
+          audioElement.pause()
+          setIsPlaying(false)
+        }
+      }, 100)
+    }
+  }
+
+  // Cleanup audio element when component unmounts or audioElement changes
+  useEffect(() => {
+    return () => {
+      if (audioElement) {
+        console.log('🎵 🧹 Component cleanup - destroying audio element')
+        cleanupAudioElement(audioElement)
+      }
+    }
+  }, [audioElement])
+
   // Session storage for generated songs
   const SESSION_KEY = 'melodygram_generated_songs'
 
@@ -799,23 +846,78 @@ export default function SongGeneration({
 
     try {
       if (audioElement && !audioElement.paused) {
-        // Pause current audio
-        audioElement.pause()
-        setIsPlaying(false)
-        console.log('🎵 Audio paused')
+        // Pause current audio with force stop for mobile compatibility
+        console.log('🎵 Pausing audio...')
+        forceStopAudio()
+        console.log('🎵 Audio paused - isPlaying set to false')
+        return
       } else {
         // Play or resume audio
         let audio = audioElement
 
-        if (!audio) {
+        if (!audio || audio.src !== generatedSong.audioUrl) {
+          // Clean up existing audio element if it exists
+          if (audioElement) {
+            console.log('🎵 Cleaning up existing audio element')
+            cleanupAudioElement(audioElement)
+          }
+
           // Create new audio element
           console.log('🎵 Creating new audio element:', generatedSong.audioUrl?.substring(0, 50) + '...')
           audio = new Audio(generatedSong.audioUrl)
           
+          // Ensure audio is ready for mobile
+          audio.preload = 'metadata'
+          audio.crossOrigin = 'anonymous'
+          
+          let isSeekingToStart = false // Prevent infinite loop
+          
+          const handleTimeUpdate = () => {
+            const currentTime = audio.currentTime
+            const selection = generatedSong.audioSelection
+            
+            console.log('🎵 Time update:', currentTime, 'selection:', selection)
+            
+            // If we have an audio selection, handle playback within the selection
+            if (selection) {
+              // Auto-pause when reaching end of selection
+              if (currentTime >= selection.endTime) {
+                console.log('🎵 🛑 Reached end of selection, pausing and resetting')
+                audio.pause()
+                isSeekingToStart = true
+                audio.currentTime = selection.startTime
+                setIsPlaying(false)
+                setCurrentTime(selection.startTime)
+                setTimeout(() => { isSeekingToStart = false }, 100)
+                return
+              }
+              
+              // If we're before the selection start, jump to start (with loop prevention)
+              if (currentTime < selection.startTime && !isSeekingToStart) {
+                console.log('🎵 🔄 Before selection start, jumping to:', selection.startTime)
+                isSeekingToStart = true
+                audio.currentTime = selection.startTime
+                setCurrentTime(selection.startTime)
+                setTimeout(() => { isSeekingToStart = false }, 100)
+                return
+              }
+              
+              // Update current time if we're within the selection
+              if (currentTime >= selection.startTime && currentTime <= selection.endTime) {
+                setCurrentTime(currentTime)
+              }
+            } else {
+              setCurrentTime(currentTime)
+            }
+          }
+          
+          audio.addEventListener('timeupdate', handleTimeUpdate)
+          
           audio.addEventListener('ended', () => {
-            setIsPlaying(false)
-            setCurrentTime(0)
             console.log('🎵 Audio playback ended')
+            setIsPlaying(false)
+            const selection = generatedSong.audioSelection
+            setCurrentTime(selection ? selection.startTime : 0)
           })
 
           audio.addEventListener('error', (e) => {
@@ -828,43 +930,14 @@ export default function SongGeneration({
             setDuration(generatedSong.actualDuration || audio.duration)
           })
 
-          let isSeekingToStart = false // Prevent infinite loop
-          
-          audio.addEventListener('timeupdate', () => {
-            const currentTime = audio.currentTime
-            const selection = generatedSong.audioSelection
-            
-            // If we have an audio selection, handle playback within the selection
-            if (selection) {
-              // Auto-pause when reaching end of selection
-              if (currentTime >= selection.endTime) {
-                console.log('🎵 Reached end of selection, resetting to start')
-                audio.pause()
-                isSeekingToStart = true
-                audio.currentTime = selection.startTime
-                setIsPlaying(false)
-                setCurrentTime(selection.startTime)
-                setTimeout(() => { isSeekingToStart = false }, 100) // Reset flag after brief delay
-                return
-              }
-              
-              // If we're before the selection start, jump to start (with loop prevention)
-              if (currentTime < selection.startTime && !isSeekingToStart) {
-                console.log('🎵 Before selection start, jumping to:', selection.startTime)
-                isSeekingToStart = true
-                audio.currentTime = selection.startTime
-                setCurrentTime(selection.startTime)
-                setTimeout(() => { isSeekingToStart = false }, 100) // Reset flag after brief delay
-                return
-              }
-              
-              // Update current time if we're within the selection
-              if (currentTime >= selection.startTime && currentTime <= selection.endTime) {
-                setCurrentTime(currentTime)
-              }
-            } else {
-              setCurrentTime(currentTime)
-            }
+          audio.addEventListener('pause', () => {
+            console.log('🎵 Audio pause event fired')
+            setIsPlaying(false)
+          })
+
+          audio.addEventListener('play', () => {
+            console.log('🎵 Audio play event fired')
+            setIsPlaying(true)
           })
           
           setAudioElement(audio)
@@ -873,27 +946,32 @@ export default function SongGeneration({
         // If we have an audio selection, start from selection start
         const selection = generatedSong.audioSelection
         if (selection) {
-          // Always start from selection start when playing
+          console.log('🎵 ⏭️ Setting playback to selection start:', selection.startTime)
           audio.currentTime = selection.startTime
           setCurrentTime(selection.startTime)
-          console.log('🎵 Starting playback from selection start:', selection.startTime)
         }
         
+        console.log('🎵 ▶️ Starting audio playback...')
         await audio.play()
         setIsPlaying(true)
-        console.log('🎵 Audio playback started')
+        console.log('🎵 ✅ Audio playback started successfully')
       }
     } catch (error) {
-      console.error('🎵 Audio playback error:', error)
+      console.error('🎵 ❌ Audio playback error:', error)
       setIsPlaying(false)
+      
+      // Additional mobile-specific error handling
+      if (error.name === 'NotAllowedError') {
+        console.log('🎵 📱 Mobile browser blocked autoplay - user interaction required')
+      }
     }
   }
 
   const handleSelectPreviousSong = (song: GeneratedSong) => {
-    // Stop and completely reset current audio
+    // Stop and completely reset current audio with proper cleanup
     if (audioElement) {
-      audioElement.pause()
-      audioElement.currentTime = 0
+      console.log('🎵 🔄 Switching songs - cleaning up current audio')
+      cleanupAudioElement(audioElement)
       setAudioElement(null)
     }
     
@@ -1274,7 +1352,12 @@ export default function SongGeneration({
                         {/* Play/Pause Button */}
             <button
               onClick={handlePlayPause}
-              className="w-12 h-12 bg-green-500/20 hover:bg-green-500/30 rounded-full flex items-center justify-center transition-colors border border-green-500/30 flex-shrink-0"
+              onTouchEnd={(e) => {
+                // Ensure mobile touch events work properly
+                e.preventDefault()
+                handlePlayPause()
+              }}
+              className="w-12 h-12 bg-green-500/20 hover:bg-green-500/30 rounded-full flex items-center justify-center transition-colors border border-green-500/30 flex-shrink-0 touch-manipulation"
               title={isPlaying ? 'Pause' : (currentTime === 0 && !isPlaying ? 'Play' : 'Replay')}
             >
               {isPlaying ? (
