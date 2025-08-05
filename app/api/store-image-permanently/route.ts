@@ -29,37 +29,68 @@ export async function POST(request: NextRequest) {
       type: imageBlob.type
     })
     
-    // Upload to ngrok for permanent storage
-    const ngrokUrl = process.env.NEXT_PUBLIC_NGROK_URL || 'https://e9d839e3b493.ngrok-free.app'
-    const uploadEndpoint = `${ngrokUrl}/api/upload-image-blob`
+    // Check if we're in production or development environment
+    const isProduction = process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production'
+    const hasNgrokAccess = process.env.NEXT_PUBLIC_NGROK_URL && !isProduction
     
-    console.log('🖼️ Backend: Uploading to ngrok for permanent storage:', uploadEndpoint)
-    
-    const formData = new FormData()
-    formData.append('image', imageBlob, 'generated-avatar.png')
-    
-    const uploadResponse = await fetch(uploadEndpoint, {
-      method: 'POST',
-      body: formData
-    })
-    
-    if (!uploadResponse.ok) {
-      const uploadError = await uploadResponse.text()
-      throw new Error(`Failed to upload image: ${uploadResponse.statusText} - ${uploadError}`)
+    if (hasNgrokAccess) {
+      // DEVELOPMENT: Upload to ngrok for permanent storage
+      console.log('🖼️ Backend: Development mode - using ngrok for permanent storage')
+      
+      const ngrokUrl = process.env.NEXT_PUBLIC_NGROK_URL
+      const uploadEndpoint = `${ngrokUrl}/api/upload-image-blob`
+      
+      console.log('🖼️ Backend: Uploading to ngrok:', uploadEndpoint)
+      
+      const formData = new FormData()
+      formData.append('image', imageBlob, 'generated-avatar.png')
+      
+      const uploadResponse = await fetch(uploadEndpoint, {
+        method: 'POST',
+        body: formData
+      })
+      
+      if (!uploadResponse.ok) {
+        const uploadError = await uploadResponse.text()
+        throw new Error(`Failed to upload image: ${uploadResponse.statusText} - ${uploadError}`)
+      }
+      
+      const uploadData = await uploadResponse.json()
+      
+      if (!uploadData.success) {
+        throw new Error(`Upload failed: ${uploadData.error}`)
+      }
+      
+      console.log('✅ Backend: Image stored permanently via ngrok:', uploadData.url)
+      
+      return NextResponse.json({
+        success: true,
+        permanentUrl: uploadData.url
+      })
+      
+    } else {
+      // PRODUCTION: Use base64 data URL (most reliable, never expires)
+      console.log('🖼️ Backend: Production mode - using base64 data URL for permanent storage')
+      console.log('🌍 Environment:', {
+        VERCEL_ENV: process.env.VERCEL_ENV,
+        NODE_ENV: process.env.NODE_ENV,
+        hasNgrok: !!process.env.NEXT_PUBLIC_NGROK_URL
+      })
+      
+      // Convert image to base64 data URL (never expires, always accessible)
+      const imageArrayBuffer = await imageBlob.arrayBuffer()
+      const imageBase64 = Buffer.from(imageArrayBuffer).toString('base64')
+      const mimeType = imageBlob.type || 'image/png'
+      const dataUrl = `data:${mimeType};base64,${imageBase64}`
+      
+      console.log('✅ Backend: Image converted to base64 data URL (permanent, never expires)')
+      console.log('📊 Backend: Data URL size:', Math.round(dataUrl.length / 1024), 'KB')
+      
+      return NextResponse.json({
+        success: true,
+        permanentUrl: dataUrl
+      })
     }
-    
-    const uploadData = await uploadResponse.json()
-    
-    if (!uploadData.success) {
-      throw new Error(`Upload failed: ${uploadData.error}`)
-    }
-    
-    console.log('✅ Backend: Image stored permanently via ngrok:', uploadData.url)
-    
-    return NextResponse.json({
-      success: true,
-      permanentUrl: uploadData.url
-    })
     
   } catch (error) {
     console.error('❌ Backend: Failed to store image permanently:', error)
