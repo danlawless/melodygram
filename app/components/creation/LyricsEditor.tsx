@@ -261,8 +261,8 @@ export default function LyricsEditor({
           <div className="flex items-center space-x-2 text-blue-300 text-sm">
             <Sparkles className="w-4 h-4" />
             <span>
-              AI will generate {songLength <= 30 ? 'concise, impactful' : songLength <= 60 ? 'structured verse-chorus' : 'full song'} lyrics 
-              and a matching title for your {formatTime(songLength)} song
+              AI Will Generate {songLength <= 30 ? 'Concise, Impactful' : songLength <= 60 ? 'Structured Verse-chorus' : 'Full Song'} Lyrics 
+              and a Matching Title for Your {formatTime(songLength)} Song
             </span>
           </div>
         </div>
@@ -305,10 +305,10 @@ export default function LyricsEditor({
               <select
                 value={selectedStyle}
                 onChange={(e) => setSelectedStyle(e.target.value)}
-                className="w-full bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-colors"
+                className="w-full melody-dropdown"
               >
                 {styles.map((style) => (
-                  <option key={style} value={style} className="bg-gray-800">
+                  <option key={style} value={style} className="bg-gray-900 text-white">
                     {style.charAt(0).toUpperCase() + style.slice(1)}
                   </option>
                 ))}
@@ -324,10 +324,10 @@ export default function LyricsEditor({
               <select
                 value={selectedMood}
                 onChange={(e) => setSelectedMood(e.target.value)}
-                className="w-full bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-colors"
+                className="w-full melody-dropdown"
               >
                 {moods.map((mood) => (
-                  <option key={mood} value={mood} className="bg-gray-800">
+                  <option key={mood} value={mood} className="bg-gray-900 text-white">
                     {mood.charAt(0).toUpperCase() + mood.slice(1)}
                   </option>
                 ))}

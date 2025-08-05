@@ -129,10 +129,10 @@ export default function AvatarGeneration({
             <select
               value={selectedPreset}
               onChange={(e) => setSelectedPreset(e.target.value)}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full melody-dropdown"
             >
               {presets.map((preset) => (
-                <option key={preset.id} value={preset.id}>
+                <option key={preset.id} value={preset.id} className="bg-gray-900 text-white">
                   {preset.name} - {preset.description}
                 </option>
               ))}
@@ -147,11 +147,11 @@ export default function AvatarGeneration({
             <select
               value={selectedBackground}
               onChange={(e) => setSelectedBackground(e.target.value as 'studio' | 'transparent' | 'original')}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full melody-dropdown"
             >
-              <option value="studio">Studio Background</option>
-              <option value="transparent">Transparent Background</option>
-              <option value="original">Original Background</option>
+              <option value="studio" className="bg-gray-900 text-white">Studio Background</option>
+              <option value="transparent" className="bg-gray-900 text-white">Transparent Background</option>
+              <option value="original" className="bg-gray-900 text-white">Original Background</option>
             </select>
           </div>
 
@@ -163,11 +163,11 @@ export default function AvatarGeneration({
             <select
               value={selectedQuality}
               onChange={(e) => setSelectedQuality(e.target.value as 'standard' | 'high' | 'ultra')}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full melody-dropdown"
             >
-              <option value="standard">Standard Quality</option>
-              <option value="high">High Quality</option>
-              <option value="ultra">Ultra Quality</option>
+              <option value="standard" className="bg-gray-900 text-white">Standard Quality</option>
+              <option value="high" className="bg-gray-900 text-white">High Quality</option>
+              <option value="ultra" className="bg-gray-900 text-white">Ultra Quality</option>
             </select>
           </div>
 

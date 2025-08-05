@@ -177,7 +177,7 @@ export default function SingerSelection({ lyrics, title, isInlineMode = false, a
               <select
                 value={genderFilter}
                 onChange={(e) => setGenderFilter(e.target.value)}
-                className="px-3 py-2 bg-bg-secondary rounded-lg border border-border-subtle text-text-primary text-sm focus:border-melody-purple focus:outline-none"
+                className="melody-dropdown text-sm"
               >
                 <option value="">All Genders</option>
                 <option value="female">Female</option>

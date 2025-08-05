@@ -64,6 +64,9 @@ export default function CreationStudio() {
   const [songHistory, setSongHistory] = useState<any[]>([])
   const [currentAvatarIndex, setCurrentAvatarIndex] = useState<number>(0)
   const [currentSongIndex, setCurrentSongIndex] = useState<number>(0)
+  
+  // Gender alignment lock state
+  const [genderAlignmentLocked, setGenderAlignmentLocked] = useState<boolean>(false)
 
   // Session storage key
   const SESSION_KEY = 'melodygram_creation_session'
@@ -227,6 +230,7 @@ export default function CreationStudio() {
     if (typeof window !== 'undefined' && 'vibrate' in navigator) {
       navigator.vibrate(10)
     }
+    // Smart alignment will handle any incompatibilities
   }
 
   // Handle generation info updates from SongGeneration component
@@ -235,43 +239,102 @@ export default function CreationStudio() {
     setTotalGenerations(totalCount)
   }
 
+  // Helper functions for smart avatar navigation
+  const findNextAvatar = (startIndex: number, direction: 'next' | 'prev'): number => {
+    // Always allow avatar navigation regardless of lock state
+    // The smart alignment will handle finding compatible songs after avatar changes
+    if (direction === 'next') {
+      return startIndex < avatarHistory.length - 1 ? startIndex + 1 : 0
+    } else {
+      return startIndex > 0 ? startIndex - 1 : avatarHistory.length - 1
+    }
+  }
+
   // Navigation functions for avatars
   const handlePreviousAvatar = () => {
     if (avatarHistory.length > 1) {
-      const newIndex = currentAvatarIndex > 0 ? currentAvatarIndex - 1 : avatarHistory.length - 1
+      const newIndex = findNextAvatar(currentAvatarIndex, 'prev')
       setCurrentAvatarIndex(newIndex)
       setGeneratedImageUrl(avatarHistory[newIndex].imageUrl)
+      console.log(`🎭 Navigated to avatar: ${avatarHistory[newIndex].gender} (Lock: ${genderAlignmentLocked ? 'ON - will find matching song' : 'OFF'})`)
     }
   }
 
   const handleNextAvatar = () => {
     if (avatarHistory.length > 1) {
-      const newIndex = currentAvatarIndex < avatarHistory.length - 1 ? currentAvatarIndex + 1 : 0
+      const newIndex = findNextAvatar(currentAvatarIndex, 'next')
       setCurrentAvatarIndex(newIndex)
       setGeneratedImageUrl(avatarHistory[newIndex].imageUrl)
+      console.log(`🎭 Navigated to avatar: ${avatarHistory[newIndex].gender} (Lock: ${genderAlignmentLocked ? 'ON - will find matching song' : 'OFF'})`)
     }
+  }
+
+  // Helper function for smart song navigation
+  const findNextCompatibleSong = (startIndex: number, direction: 'next' | 'prev'): number => {
+    if (!genderAlignmentLocked || avatarHistory.length === 0) {
+      // If not locked, use simple navigation
+      if (direction === 'next') {
+        return startIndex < songHistory.length - 1 ? startIndex + 1 : 0
+      } else {
+        return startIndex > 0 ? startIndex - 1 : songHistory.length - 1
+      }
+    }
+
+    // When locked, find next song that matches current avatar gender
+    const currentAvatarGender = avatarHistory[currentAvatarIndex]?.gender
+    if (!currentAvatarGender) return startIndex
+
+    let searchIndex = startIndex
+    let attempts = 0
+    const maxAttempts = songHistory.length
+
+    do {
+      if (direction === 'next') {
+        searchIndex = searchIndex < songHistory.length - 1 ? searchIndex + 1 : 0
+      } else {
+        searchIndex = searchIndex > 0 ? searchIndex - 1 : songHistory.length - 1
+      }
+      
+      attempts++
+      
+      // Check if this song is compatible with current avatar
+      const song = songHistory[searchIndex]
+      if (song?.selectedVocal === currentAvatarGender) {
+        return searchIndex
+      }
+      
+    } while (searchIndex !== startIndex && attempts < maxAttempts)
+
+    // If no compatible song found, stay at current position
+    return startIndex
   }
 
   // Navigation functions for songs
   const handlePreviousSong = () => {
     if (songHistory.length > 1) {
-      const newIndex = currentSongIndex > 0 ? currentSongIndex - 1 : songHistory.length - 1
-      setCurrentSongIndex(newIndex)
-      setGeneratedSongUrl(songHistory[newIndex].audioUrl)
-      setSongTitle(songHistory[newIndex].title || songTitle)
-      setSelectedVocal(songHistory[newIndex].selectedVocal || selectedVocal)
-      setSongLength(songHistory[newIndex].songLength || songLength)
+      const newIndex = findNextCompatibleSong(currentSongIndex, 'prev')
+      if (newIndex !== currentSongIndex) {
+        setCurrentSongIndex(newIndex)
+        setGeneratedSongUrl(songHistory[newIndex].audioUrl)
+        setSongTitle(songHistory[newIndex].title || songTitle)
+        setSelectedVocal(songHistory[newIndex].selectedVocal || selectedVocal)
+        setSongLength(songHistory[newIndex].songLength || songLength)
+        console.log(`🎵 Navigated to compatible song: ${songHistory[newIndex].selectedVocal} voice`)
+      }
     }
   }
 
   const handleNextSong = () => {
     if (songHistory.length > 1) {
-      const newIndex = currentSongIndex < songHistory.length - 1 ? currentSongIndex + 1 : 0
-      setCurrentSongIndex(newIndex)
-      setGeneratedSongUrl(songHistory[newIndex].audioUrl)
-      setSongTitle(songHistory[newIndex].title || songTitle)
-      setSelectedVocal(songHistory[newIndex].selectedVocal || selectedVocal)
-      setSongLength(songHistory[newIndex].songLength || songLength)
+      const newIndex = findNextCompatibleSong(currentSongIndex, 'next')
+      if (newIndex !== currentSongIndex) {
+        setCurrentSongIndex(newIndex)
+        setGeneratedSongUrl(songHistory[newIndex].audioUrl)
+        setSongTitle(songHistory[newIndex].title || songTitle)
+        setSelectedVocal(songHistory[newIndex].selectedVocal || selectedVocal)
+        setSongLength(songHistory[newIndex].songLength || songLength)
+        console.log(`🎵 Navigated to compatible song: ${songHistory[newIndex].selectedVocal} voice`)
+      }
     }
   }
 
@@ -279,11 +342,79 @@ export default function CreationStudio() {
   const handleAvatarHistoryUpdate = (history: any[], currentIndex: number = 0) => {
     setAvatarHistory(history)
     setCurrentAvatarIndex(currentIndex)
+    // Auto-alignment is handled by useEffect
   }
 
   const handleSongHistoryUpdate = (history: any[], currentIndex: number = 0) => {
     setSongHistory(history)
     setCurrentSongIndex(currentIndex)
+  }
+
+  // Smart alignment system: find compatible song when locked on mismatch
+  const smartAlignment = useCallback(() => {
+    if (!genderAlignmentLocked || avatarHistory.length === 0 || songHistory.length === 0) return
+
+    const currentAvatarGender = avatarHistory[currentAvatarIndex]?.gender
+    const currentSong = songHistory[currentSongIndex]
+    
+    // When locked, if there's a mismatch, find the next compatible song
+    if (currentAvatarGender && currentSong?.selectedVocal !== currentAvatarGender) {
+      
+      // Manual search for compatible song to avoid dependency issues
+      let searchIndex = currentSongIndex
+      let attempts = 0
+      const maxAttempts = songHistory.length
+      let foundIndex = currentSongIndex
+
+      do {
+        searchIndex = searchIndex < songHistory.length - 1 ? searchIndex + 1 : 0
+        attempts++
+        
+        const song = songHistory[searchIndex]
+        if (song?.selectedVocal === currentAvatarGender) {
+          foundIndex = searchIndex
+          break
+        }
+        
+      } while (searchIndex !== currentSongIndex && attempts < maxAttempts)
+      
+      if (foundIndex !== currentSongIndex) {
+        console.log(`🔒 Smart Lock: ${currentAvatarGender} avatar needs ${currentAvatarGender} song → Found "${songHistory[foundIndex]?.title}" (${songHistory[foundIndex]?.selectedVocal})`)
+        setCurrentSongIndex(foundIndex)
+        setGeneratedSongUrl(songHistory[foundIndex].audioUrl)
+        setSongTitle(songHistory[foundIndex].title || songTitle)
+        setSelectedVocal(songHistory[foundIndex].selectedVocal || selectedVocal)
+        setSongLength(songHistory[foundIndex].songLength || songLength)
+        
+        if (typeof window !== 'undefined' && 'vibrate' in navigator) {
+          navigator.vibrate(15)
+        }
+      } else {
+        // If no compatible song found, fall back to aligning voice to avatar
+        console.log(`🔒 No compatible ${currentAvatarGender} song found, aligning voice: ${selectedVocal} → ${currentAvatarGender}`)
+        setSelectedVocal(currentAvatarGender)
+        if (typeof window !== 'undefined' && 'vibrate' in navigator) {
+          navigator.vibrate(15)
+        }
+      }
+    }
+  }, [avatarHistory, currentAvatarIndex, selectedVocal, genderAlignmentLocked, songHistory, currentSongIndex, songTitle])
+
+  // Auto-align when lock state, avatar, or voice selection changes
+  useEffect(() => {
+    if (genderAlignmentLocked) {
+      smartAlignment()
+    }
+  }, [genderAlignmentLocked, currentAvatarIndex, avatarHistory, selectedVocal, currentSongIndex, smartAlignment])
+
+  // Handle gender alignment toggle
+  const handleGenderAlignmentToggle = () => {
+    setGenderAlignmentLocked(!genderAlignmentLocked)
+    
+    // Add haptic feedback
+    if (typeof window !== 'undefined' && 'vibrate' in navigator) {
+      navigator.vibrate(20)
+    }
   }
 
   // Auto-generate title when lyrics change (with debounce)
@@ -632,7 +763,10 @@ export default function CreationStudio() {
                 }`}
               >
                 <div className="text-center">
-                  <div className="text-2xl mb-2">🎤</div>
+                  <div className="text-2xl mb-2">
+                    🎤
+                    {genderAlignmentLocked && selectedVocal === 'male' && <span className="ml-1">🔒</span>}
+                  </div>
                   <div className="font-semibold">Male Voice</div>
                   <div className="text-sm opacity-80">Masculine Focused</div>
                 </div>
@@ -647,7 +781,10 @@ export default function CreationStudio() {
                 }`}
               >
                 <div className="text-center">
-                  <div className="text-2xl mb-2">🎙️</div>
+                  <div className="text-2xl mb-2">
+                    🎙️
+                    {genderAlignmentLocked && selectedVocal === 'female' && <span className="ml-1">🔒</span>}
+                  </div>
                   <div className="font-semibold">Female Voice</div>
                   <div className="text-sm opacity-80">Feminine Focused</div>
                 </div>
@@ -737,12 +874,21 @@ export default function CreationStudio() {
               totalGenerations={totalGenerations}
               lyrics={lyrics}
               hasMultipleAvatars={avatarHistory.length > 1}
-              hasMultipleAudio={songHistory.length > 1}
+              hasMultipleAudio={(() => {
+                if (!genderAlignmentLocked) return songHistory.length > 1
+                // When locked, check if there are multiple songs that match current avatar gender
+                const currentAvatarGender = avatarHistory[currentAvatarIndex]?.gender
+                if (!currentAvatarGender) return songHistory.length > 1
+                const compatibleCount = songHistory.filter(song => song?.selectedVocal === currentAvatarGender).length
+                return compatibleCount > 1
+              })()}
               onPreviousAvatar={handlePreviousAvatar}
               onNextAvatar={handleNextAvatar}
               onPreviousAudio={handlePreviousSong}
               onNextAudio={handleNextSong}
               currentAvatarGender={avatarHistory[currentAvatarIndex]?.gender}
+              genderAlignmentLocked={genderAlignmentLocked}
+              onGenderAlignmentToggle={handleGenderAlignmentToggle}
             />
           </div>
         )}

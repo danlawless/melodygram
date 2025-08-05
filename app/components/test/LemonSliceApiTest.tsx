@@ -545,14 +545,14 @@ export default function LemonSliceApiTest() {
                     <select
                       value={imageStyle}
                       onChange={(e) => setImageStyle(e.target.value)}
-                      className="w-full bg-black/40 border border-white/30 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-white/50 focus:border-white/50 backdrop-blur-sm text-sm"
+                      className="w-full melody-dropdown text-sm"
                     >
                       {(imageGenerationService?.getStyleOptions?.() || [
                         { value: '', label: 'Default' },
                         { value: 'photorealistic', label: 'Photorealistic' },
                         { value: 'waist-up photography', label: 'Waist-up Photography' }
                       ]).map((option: any) => (
-                        <option key={option.value} value={option.value} className="bg-black text-white">{option.label}</option>
+                        <option key={option.value} value={option.value} className="bg-gray-900 text-white">{option.label}</option>
                       ))}
                     </select>
                   </div>
@@ -562,14 +562,14 @@ export default function LemonSliceApiTest() {
                     <select
                       value={imageMood}
                       onChange={(e) => setImageMood(e.target.value)}
-                      className="w-full bg-black/40 border border-white/30 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-white/50 focus:border-white/50 backdrop-blur-sm text-sm"
+                      className="w-full melody-dropdown text-sm"
                     >
                       {(imageGenerationService?.getMoodOptions?.() || [
                         { value: '', label: 'Default' },
                         { value: 'friendly', label: 'Friendly' },
                         { value: 'professional', label: 'Professional' }
                       ]).map((option: any) => (
-                        <option key={option.value} value={option.value} className="bg-black text-white">{option.label}</option>
+                        <option key={option.value} value={option.value} className="bg-gray-900 text-white">{option.label}</option>
                       ))}
                     </select>
                   </div>

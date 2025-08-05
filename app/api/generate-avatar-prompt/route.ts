@@ -7,7 +7,7 @@ const openai = new OpenAI({
 
 export async function POST(request: NextRequest) {
   try {
-    const { style, mood } = await request.json()
+    const { gender, style, mood } = await request.json()
 
     // Create a prompt for GPT-4o-mini to generate creative avatar descriptions
     const systemPrompt = `You are a creative AI avatar prompt generator. Generate imaginative, diverse, and appealing waist-up descriptions for DALL-E 3 avatar generation.
@@ -22,13 +22,19 @@ Guidelines:
 - Use medium shot framing showing upper body in professional attire - NOT close-up on face
 - Ensure the person is properly clothed in business or casual wear, zoomed out enough to show from waist up, not tight facial crops
 - Be inclusive and avoid stereotypes
+- When gender is specified, use appropriate terms (man/woman) naturally in the description
 
 Generate ONE creative avatar prompt that would result in an appealing waist-up profile picture.`
 
     let userPrompt = `Generate a creative avatar prompt`
     
-    if (style || mood) {
+    if (gender || style || mood) {
       userPrompt += ` with`
+      if (gender) {
+        const genderTerm = gender === 'male' ? 'man' : gender === 'female' ? 'woman' : 'person'
+        userPrompt += ` a ${genderTerm}`
+      }
+      if (gender && (style || mood)) userPrompt += `,`
       if (style) userPrompt += ` ${style} style`
       if (style && mood) userPrompt += ` and`
       if (mood) userPrompt += ` ${mood} mood`
@@ -57,6 +63,7 @@ Generate ONE creative avatar prompt that would result in an appealing waist-up p
 
     return NextResponse.json({ 
       prompt: cleanPrompt,
+      gender,
       style,
       mood
     })
@@ -77,8 +84,9 @@ Generate ONE creative avatar prompt that would result in an appealing waist-up p
     
     return NextResponse.json({ 
       prompt: fallbackPrompt,
-      style: '',
-      mood: '',
+      gender: gender || '',
+      style: style || '',
+      mood: mood || '',
       fallback: true
     })
   }

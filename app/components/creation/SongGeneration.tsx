@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Music, Loader2, Play, Pause, Volume2, Heart, Trash2 } from 'lucide-react'
+import { Music, Loader2, Play, Pause, Volume2, Heart, Trash2, Check } from 'lucide-react'
 import { murekaApiService } from '../../services/murekaApi'
 import { songStorageService } from '../../services/songStorage'
 import { getCreditsForLength } from '../../services/creditSystem'
@@ -80,6 +80,7 @@ export default function SongGeneration({
   const [generationStatus, setGenerationStatus] = useState<string>('')
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
+  const [pendingDeletes, setPendingDeletes] = useState<Set<string>>(new Set())
 
   // Session storage for generated songs
   const SESSION_KEY = 'melodygram_generated_songs'
@@ -168,8 +169,35 @@ export default function SongGeneration({
     }
   }
 
+  // Handle the first click - add to pending deletes or confirm deletion
+  const handleDeleteClick = (trackId: string) => {
+    if (pendingDeletes.has(trackId)) {
+      // Second click - confirm deletion
+      handleDeleteTrack(trackId)
+    } else {
+      // First click - add to pending deletes
+      setPendingDeletes(prev => new Set(prev).add(trackId))
+      
+      // Auto-remove from pending after 5 seconds if not confirmed
+      setTimeout(() => {
+        setPendingDeletes(prev => {
+          const newSet = new Set(prev)
+          newSet.delete(trackId)
+          return newSet
+        })
+      }, 5000)
+    }
+  }
+
   // Delete a specific track from history
   const handleDeleteTrack = (trackId: string) => {
+    // Remove from pending deletes
+    setPendingDeletes(prev => {
+      const newSet = new Set(prev)
+      newSet.delete(trackId)
+      return newSet
+    })
+    
     const updatedHistory = generationHistory.filter(song => song.id !== trackId)
     setGenerationHistory(updatedHistory)
     saveToSession(updatedHistory)
@@ -686,17 +714,12 @@ export default function SongGeneration({
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div>
-                {/* Song Title - First Line */}
+                {/* Song Title */}
                 <h3 className="font-medium text-white mb-1">
                   {generatedSong.title || 'Untitled'}
                 </h3>
                 
-                {/* Generation Info - Second Line */}
-                <p className="text-sm text-green-400 mb-1">
-                  ✅ Generation {generationHistory.length - generationHistory.findIndex(song => song.audioUrl === generatedSong.audioUrl)} {isPlaying ? '• Playing' : '• Ready'}
-                </p>
-                
-                {/* Timestamp - Third Line */}
+                {/* Timestamp */}
                 <p className="text-sm text-gray-400">
                   {new Date(generatedSong.createdAt).toLocaleString()}
                 </p>
@@ -788,22 +811,14 @@ export default function SongGeneration({
                     
                     {/* Generation Info */}
                     <div className="flex-1 min-w-0">
-                      {/* Song Title - First Line */}
-                      <p className={`text-sm font-medium mb-1 ${
+                      {/* Song Title - Can wrap to two lines */}
+                      <p className={`text-xs font-medium mb-2 leading-tight line-clamp-2 ${
                         isCurrentSong ? 'text-white' : 'text-white'
                       }`}>
                         {song.title || 'Untitled'}
                       </p>
                       
-                      {/* Generation Info - Second Line */}
-                      <p className={`text-xs mb-1 ${
-                        isCurrentSong ? 'text-green-400' : 'text-gray-300'
-                      }`}>
-                        ✅ Generation {generationNumber}
-                        {isCurrentSong && <span className="ml-1">• Active</span>}
-                      </p>
-                      
-                      {/* Details - Third Line */}
+                      {/* Details - Bottom Line */}
                       <div className="flex items-center justify-between">
                         <p className="text-xs text-gray-400">
                           {new Date(song.createdAt).toLocaleTimeString()}
@@ -821,17 +836,32 @@ export default function SongGeneration({
                     </div>
                     
                     {/* Action Buttons */}
-                    <div className="flex items-center space-x-2">
+                    <div className="flex flex-col items-end space-y-1">
+                      {/* Active Indicator */}
+                      {isCurrentSong && (
+                        <span className="text-xs text-green-400 font-medium">Active</span>
+                      )}
+                      
+                      {/* Buttons Row */}
+                      <div className="flex items-center space-x-2">
                       {/* Delete Button */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation() // Prevent row click
-                          handleDeleteTrack(song.id!)
+                          handleDeleteClick(song.id!)
                         }}
-                        className="w-8 h-8 bg-red-500/20 hover:bg-red-500/30 rounded-full flex items-center justify-center transition-colors border border-red-500/30"
-                        title="Delete this generation"
+                        className={`w-8 h-8 rounded-full flex items-center justify-center transition-all border ${
+                          pendingDeletes.has(song.id!)
+                            ? 'bg-green-500/20 hover:bg-green-500/30 border-green-500/30 animate-pulse'
+                            : 'bg-red-500/20 hover:bg-red-500/30 border-red-500/30'
+                        }`}
+                        title={pendingDeletes.has(song.id!) ? "Click to confirm deletion" : "Delete this generation"}
                       >
-                        <Trash2 className="w-4 h-4 text-red-400" />
+                        {pendingDeletes.has(song.id!) ? (
+                          <Check className="w-4 h-4 text-green-400" />
+                        ) : (
+                          <Trash2 className="w-4 h-4 text-red-400" />
+                        )}
                       </button>
                       
                       {/* Play/Pause Button */}
@@ -857,6 +887,7 @@ export default function SongGeneration({
                           <Play className="w-4 h-4 text-green-400" />
                         )}
                       </button>
+                      </div>
                     </div>
                   </div>
                 </div>

@@ -198,10 +198,36 @@ html {
   border: 1px solid var(--border-accent);
   border-radius: 12px;
   color: var(--text-primary);
-  padding: 16px;
-  font-size: 16px;
-  transition: all 0.2s ease;
-  width: 100%;
+}
+
+/* Branded Dropdown Styles */
+.melody-dropdown {
+  background: linear-gradient(to right, rgba(255,255,255,0.1), rgba(255,255,255,0.05)) !important;
+  backdrop-filter: blur(4px) !important;
+  border: 1px solid rgba(139, 92, 246, 0.3) !important;
+  border-radius: 12px !important;
+  color: white !important;
+  padding: 12px !important;
+  transition: all 0.3s ease !important;
+}
+
+.melody-dropdown:hover {
+  border-color: rgba(139, 92, 246, 0.5) !important;
+  background: linear-gradient(to right, rgba(255,255,255,0.15), rgba(255,255,255,0.08)) !important;
+}
+
+.melody-dropdown:focus {
+  outline: none !important;
+  border-color: var(--melody-purple) !important;
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.3) !important;
+  ring: 2px solid rgba(139, 92, 246, 0.5) !important;
+}
+
+/* Dark theme dropdown options */
+.melody-dropdown option {
+  background-color: #1f2937 !important;
+  color: white !important;
+  padding: 8px !important;
 }
 
 .input:focus {

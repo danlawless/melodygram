@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useCallback, useRef, useEffect } from 'react'
-import { Upload, Image as ImageIcon, X, Sparkles, Loader2, User, Palette, Heart, MoreVertical, Trash2, Shield } from 'lucide-react'
+import { Upload, Image as ImageIcon, X, Sparkles, Loader2, User, Palette, Heart, MoreVertical, Trash2, Shield, Check } from 'lucide-react'
 import TipButton from '../ui/TipButton'
 import { imageGenerationService } from '../../services/imageGeneration'
 
@@ -42,6 +42,7 @@ export default function ImageUpload({ uploadedImage, onImageUpload, onImageGener
   const [avatarHistory, setAvatarHistory] = useState<GeneratedAvatar[]>([])
   const [currentAvatar, setCurrentAvatar] = useState<GeneratedAvatar | null>(null)
   const [showHistoryMenu, setShowHistoryMenu] = useState(false)
+  const [pendingDeletes, setPendingDeletes] = useState<Set<string>>(new Set())
 
   // File input reference  
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -265,6 +266,66 @@ export default function ImageUpload({ uploadedImage, onImageUpload, onImageGener
     if (currentAvatar?.id === avatarId) {
       setCurrentAvatar(prev => prev ? { ...prev, favorite: !prev.favorite } : null)
     }
+  }
+
+  // Handle the first click - add to pending deletes or confirm deletion
+  const handleDeleteClick = (avatarId: string) => {
+    if (pendingDeletes.has(avatarId)) {
+      // Second click - confirm deletion
+      handleDeleteAvatar(avatarId)
+    } else {
+      // First click - add to pending deletes
+      setPendingDeletes(prev => new Set(prev).add(avatarId))
+      
+      // Auto-remove from pending after 5 seconds if not confirmed
+      setTimeout(() => {
+        setPendingDeletes(prev => {
+          const newSet = new Set(prev)
+          newSet.delete(avatarId)
+          return newSet
+        })
+      }, 5000)
+    }
+  }
+
+  // Delete individual avatar
+  const handleDeleteAvatar = async (avatarId: string) => {
+    // Remove from pending deletes
+    setPendingDeletes(prev => {
+      const newSet = new Set(prev)
+      newSet.delete(avatarId)
+      return newSet
+    })
+    
+    const updatedHistory = avatarHistory.filter(avatar => avatar.id !== avatarId)
+    setAvatarHistory(updatedHistory)
+    await saveAvatarHistory(updatedHistory)
+    
+    // If we deleted the current avatar, switch to the most recent one or clear
+    if (currentAvatar?.id === avatarId) {
+      if (updatedHistory.length > 0) {
+        const newCurrent = updatedHistory[0]
+        setCurrentAvatar(newCurrent)
+        setPreview(newCurrent.imageUrl)
+        if (onImageGenerated) {
+          onImageGenerated(newCurrent.imageUrl)
+        }
+      } else {
+        setCurrentAvatar(null)
+        setPreview(null)
+        if (onImageGenerated) {
+          onImageGenerated(null)
+        }
+      }
+    }
+    
+    // Update parent navigation state
+    if (onHistoryUpdate) {
+      const newCurrentIndex = updatedHistory.length > 0 ? 0 : -1
+      onHistoryUpdate(updatedHistory, Math.max(0, newCurrentIndex))
+    }
+    
+    console.log(`🗑️ Deleted avatar ${avatarId}`)
   }
 
   const switchToAvatar = (avatar: GeneratedAvatar) => {
@@ -591,10 +652,10 @@ export default function ImageUpload({ uploadedImage, onImageUpload, onImageGener
               <select
                 value={selectedStyle}
                 onChange={(e) => setSelectedStyle(e.target.value)}
-                className="w-full bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-colors"
+                className="w-full melody-dropdown"
               >
                 {imageGenerationService.getStyleOptions().map((option) => (
-                  <option key={option.value} value={option.value} className="bg-gray-800">
+                  <option key={option.value} value={option.value} className="bg-gray-900 text-white">
                     {option.label}
                   </option>
                 ))}
@@ -610,10 +671,10 @@ export default function ImageUpload({ uploadedImage, onImageUpload, onImageGener
               <select
                 value={selectedMood}
                 onChange={(e) => setSelectedMood(e.target.value)}
-                className="w-full bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-colors"
+                className="w-full melody-dropdown"
               >
                 {imageGenerationService.getMoodOptions().map((option) => (
-                  <option key={option.value} value={option.value} className="bg-gray-800">
+                  <option key={option.value} value={option.value} className="bg-gray-900 text-white">
                     {option.label}
                   </option>
                 ))}
@@ -730,16 +791,50 @@ export default function ImageUpload({ uploadedImage, onImageUpload, onImageGener
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
           
-          {/* Remove button */}
+          {/* Heart/Favorite button - Top left */}
+          {currentAvatar && (
+            <button
+              onClick={() => handleToggleFavorite(currentAvatar.id)}
+              className={`absolute top-4 left-4 w-10 h-10 rounded-full backdrop-blur-sm flex items-center justify-center transition-all hover:scale-110 ${
+                currentAvatar.favorite
+                  ? 'bg-pink-500/90 border border-pink-300/50'
+                  : 'bg-black/50 hover:bg-pink-500/20'
+              }`}
+              title={currentAvatar.favorite ? 'Remove from favorites' : 'Add to favorites'}
+            >
+              <Heart className={`w-5 h-5 ${currentAvatar.favorite ? 'text-white fill-current' : 'text-white'}`} />
+            </button>
+          )}
+
+          {/* Remove button - Top right */}
           <button
             onClick={removeImage}
             className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center hover:bg-black/70 transition-colors"
           >
             <X className="w-5 h-5 text-white" />
           </button>
+
+          {/* Delete avatar button - Bottom right */}
+          {currentAvatar && (
+            <button
+              onClick={() => handleDeleteClick(currentAvatar.id)}
+              className={`absolute bottom-4 right-4 w-10 h-10 rounded-full backdrop-blur-sm border flex items-center justify-center transition-all hover:scale-110 ${
+                pendingDeletes.has(currentAvatar.id)
+                  ? 'bg-green-500/90 hover:bg-green-600 border-green-300/50 animate-pulse'
+                  : 'bg-red-500/90 hover:bg-red-600 border-red-300/50'
+              }`}
+              title={pendingDeletes.has(currentAvatar.id) ? "Click to confirm deletion" : "Delete this avatar permanently"}
+            >
+              {pendingDeletes.has(currentAvatar.id) ? (
+                <Check className="w-5 h-5 text-white" />
+              ) : (
+                <Trash2 className="w-5 h-5 text-white" />
+              )}
+            </button>
+          )}
           
           {/* Image info overlay */}
-          <div className="absolute bottom-4 left-4 right-4">
+          <div className="absolute bottom-4 left-4 right-16">
             <div className="flex items-center gap-2 text-white">
               {generatedImageUrl ? (
                 <>
@@ -842,9 +937,29 @@ export default function ImageUpload({ uploadedImage, onImageUpload, onImageGener
                     {avatarHistory.length - index}
                   </div>
                   
-                  {/* Active indicator */}
+                  {/* Delete button - Bottom right corner */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleDeleteClick(avatar.id)
+                    }}
+                    className={`absolute bottom-1 right-1 w-5 h-5 rounded-full border flex items-center justify-center transition-all hover:scale-110 ${
+                      pendingDeletes.has(avatar.id)
+                        ? 'bg-green-500/90 hover:bg-green-600 border-green-300/50 animate-pulse'
+                        : 'bg-red-500/90 hover:bg-red-600 border-red-300/50'
+                    }`}
+                    title={pendingDeletes.has(avatar.id) ? "Click to confirm deletion" : "Delete this avatar"}
+                  >
+                    {pendingDeletes.has(avatar.id) ? (
+                      <Check className="w-3 h-3 text-white" />
+                    ) : (
+                      <Trash2 className="w-3 h-3 text-white" />
+                    )}
+                  </button>
+                  
+                  {/* Active indicator - Bottom left corner */}
                   {isCurrentAvatar && (
-                    <div className="absolute bottom-1 right-1 w-3 h-3 bg-green-500 rounded-full border border-white" />
+                    <div className="absolute bottom-1 left-1 w-3 h-3 bg-green-500 rounded-full border border-white" />
                   )}
                 </div>
               )
@@ -861,12 +976,12 @@ export default function ImageUpload({ uploadedImage, onImageUpload, onImageGener
                   title="Manage avatar history"
                 >
                   <MoreVertical className="w-4 h-4" />
-                  <span>Manage</span>
+                  <span>Clear History</span>
                 </button>
                 
                 {/* Integrated History Management Dropdown */}
                 {showHistoryMenu && (
-                  <div className="absolute right-0 top-6 mt-1 w-56 bg-gray-800/98 backdrop-blur-xl border border-gray-600/70 rounded-lg shadow-2xl z-[9999]">
+                  <div className="absolute right-0 bottom-full mb-2 w-56 bg-black backdrop-blur-xl border border-gray-600/70 rounded-lg shadow-2xl z-[9999]">
                     <div className="p-2">
                       <div className="text-xs text-gray-400 mb-2 px-2">Avatar History ({avatarHistory.length})</div>
                       

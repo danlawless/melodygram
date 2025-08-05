@@ -322,7 +322,7 @@ export default function MyScreen({ onProfileClick }: MyScreenProps) {
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value as any)}
-              className="px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500 [&>option]:bg-gray-900 [&>option]:text-white"
+              className="melody-dropdown"
             >
               <option value="all">All Status</option>
               <option value="completed">Completed</option>
@@ -333,7 +333,7 @@ export default function MyScreen({ onProfileClick }: MyScreenProps) {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500 [&>option]:bg-gray-900 [&>option]:text-white"
+              className="melody-dropdown"
             >
               <option value="newest">Newest First</option>
               <option value="oldest">Oldest First</option>

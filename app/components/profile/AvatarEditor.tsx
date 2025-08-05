@@ -26,7 +26,7 @@ export default function AvatarEditor({ currentAvatar, onAvatarChange, onClose }:
   
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedAvatar, setGeneratedAvatar] = useState<string | null>(null)
-  const [customPrompt, setCustomPrompt] = useState('')
+  const [selectedGender, setSelectedGender] = useState('')
   const [selectedStyle, setSelectedStyle] = useState('')
   const [selectedMood, setSelectedMood] = useState('')
   const [showCustomOptions, setShowCustomOptions] = useState(false)
@@ -85,25 +85,8 @@ export default function AvatarEditor({ currentAvatar, onAvatarChange, onClose }:
     setIsGenerating(true)
     
     try {
-      let finalPrompt = prompt || customPrompt
-      
-      // If no custom prompt, generate one with GPT-4o-mini
-      if (!finalPrompt) {
-        finalPrompt = await generateAvatarPrompt(selectedStyle, selectedMood)
-      }
-
-      // Add style and mood to prompt if selected
-      if (selectedStyle && !finalPrompt.includes(selectedStyle)) {
-        finalPrompt = `${finalPrompt}, ${selectedStyle} style`
-      }
-      if (selectedMood && !finalPrompt.includes(selectedMood)) {
-        finalPrompt = `${finalPrompt}, ${selectedMood} mood`
-      }
-
-      // Ensure it's avatar-focused with waist-up framing
-      if (!finalPrompt.toLowerCase().includes('waist-up') && !finalPrompt.toLowerCase().includes('medium shot')) {
-        finalPrompt = `Waist-up shot: ${finalPrompt}`
-      }
+      // Use provided prompt or generate one with selected options
+      const finalPrompt = prompt || await generateAvatarPrompt(selectedGender, selectedStyle, selectedMood)
 
       const options: ImageGenerationOptions = {
         prompt: finalPrompt,
@@ -132,15 +115,15 @@ export default function AvatarEditor({ currentAvatar, onAvatarChange, onClose }:
     } finally {
       setIsGenerating(false)
     }
-  }, [customPrompt, selectedStyle, selectedMood, onAvatarChange, showToast])
+  }, [selectedGender, selectedStyle, selectedMood, onAvatarChange, showToast])
 
   // Generate creative avatar prompt using GPT-4o-mini
-  const generateAvatarPrompt = async (style: string, mood: string): Promise<string> => {
+  const generateAvatarPrompt = async (gender: string, style: string, mood: string): Promise<string> => {
     try {
       const response = await fetch('/api/generate-avatar-prompt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ style, mood })
+        body: JSON.stringify({ gender, style, mood })
       })
       
       if (!response.ok) throw new Error('Failed to generate prompt')
@@ -150,12 +133,23 @@ export default function AvatarEditor({ currentAvatar, onAvatarChange, onClose }:
     } catch (error) {
       console.error('Error generating avatar prompt:', error)
       // Fallback to a default prompt
-      return `Professional and friendly waist-up shot of a person, zoomed out to show torso and arms, ${mood || 'warm'} expression, ${style || 'natural lighting'}`
+      const genderTerm = gender === 'male' ? 'man' : gender === 'female' ? 'woman' : 'person'
+      return `Professional and friendly waist-up shot of a ${genderTerm}, zoomed out to show torso and arms, ${mood || 'warm'} expression, ${style || 'natural lighting'}`
     }
+  }
+
+  // Get gender options
+  const getGenderOptions = (): Array<{ value: string; label: string }> => {
+    return [
+      { value: '', label: 'Any' },
+      { value: 'male', label: 'Male' },
+      { value: 'female', label: 'Female' }
+    ]
   }
 
   // Get suggested prompts for quick generation
   const suggestedPrompts = imageGenerationService.getSuggestedPrompts()
+  const genderOptions = getGenderOptions()
   const styleOptions = imageGenerationService.getStyleOptions()
   const moodOptions = imageGenerationService.getMoodOptions()
 
@@ -239,16 +233,20 @@ export default function AvatarEditor({ currentAvatar, onAvatarChange, onClose }:
           {/* Custom Options Panel */}
           {showCustomOptions && (
             <div className="space-y-4 p-4 bg-bg-secondary rounded-xl border border-border-subtle">
-              {/* Custom Prompt */}
+              {/* Gender Selection */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-text-primary">Custom Prompt</label>
-                <textarea
-                  value={customPrompt}
-                  onChange={(e) => setCustomPrompt(e.target.value)}
-                  placeholder="Describe your ideal avatar... e.g., 'A creative artist with colorful paint splashes'"
-                  className="w-full p-3 bg-bg-primary border border-border-subtle rounded-lg text-text-primary placeholder-text-secondary focus:ring-2 focus:ring-melody-purple/20 focus:border-melody-purple transition-colors resize-none"
-                  rows={3}
-                />
+                <label className="text-sm font-medium text-text-primary">Gender</label>
+                <select
+                  value={selectedGender}
+                  onChange={(e) => setSelectedGender(e.target.value)}
+                  className="w-full melody-dropdown"
+                >
+                  {genderOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Style Selection */}
@@ -257,7 +255,7 @@ export default function AvatarEditor({ currentAvatar, onAvatarChange, onClose }:
                 <select
                   value={selectedStyle}
                   onChange={(e) => setSelectedStyle(e.target.value)}
-                  className="w-full p-3 bg-bg-primary border border-border-subtle rounded-lg text-text-primary focus:ring-2 focus:ring-melody-purple/20 focus:border-melody-purple transition-colors"
+                  className="w-full melody-dropdown"
                 >
                   {styleOptions.map(option => (
                     <option key={option.value} value={option.value}>
@@ -273,7 +271,7 @@ export default function AvatarEditor({ currentAvatar, onAvatarChange, onClose }:
                 <select
                   value={selectedMood}
                   onChange={(e) => setSelectedMood(e.target.value)}
-                  className="w-full p-3 bg-bg-primary border border-border-subtle rounded-lg text-text-primary focus:ring-2 focus:ring-melody-purple/20 focus:border-melody-purple transition-colors"
+                  className="w-full melody-dropdown"
                 >
                   {moodOptions.map(option => (
                     <option key={option.value} value={option.value}>
@@ -289,7 +287,7 @@ export default function AvatarEditor({ currentAvatar, onAvatarChange, onClose }:
           <div className="space-y-3">
             <h3 className="text-sm font-medium text-text-primary">Quick Suggestions</h3>
             <div className="grid grid-cols-1 gap-2">
-              {suggestedPrompts.slice(0, 4).map((prompt, index) => (
+              {suggestedPrompts.slice(0, 3).map((prompt, index) => (
                 <button
                   key={index}
                   onClick={() => handleGenerateAvatar(prompt)}

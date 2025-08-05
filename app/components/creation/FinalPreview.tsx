@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Play, Pause, Music, Image as ImageIcon, User, Clock, Mic, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Play, Pause, Music, Image as ImageIcon, User, Clock, Mic, ChevronLeft, ChevronRight, Volume2 } from 'lucide-react'
 
 interface FinalPreviewProps {
   // Image data
@@ -29,6 +29,10 @@ interface FinalPreviewProps {
   
   // Gender matching
   currentAvatarGender?: string // Gender of current avatar for matching
+  
+  // Gender alignment lock
+  genderAlignmentLocked?: boolean
+  onGenderAlignmentToggle?: () => void
 }
 
 export default function FinalPreview({
@@ -47,7 +51,9 @@ export default function FinalPreview({
   onNextAudio,
   hasMultipleAvatars = false,
   hasMultipleAudio = false,
-  currentAvatarGender
+  currentAvatarGender,
+  genderAlignmentLocked = false,
+  onGenderAlignmentToggle
 }: FinalPreviewProps) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null)
@@ -233,6 +239,23 @@ export default function FinalPreview({
           )}
         </div>
         
+        {/* Gender Alignment Toggle */}
+        {onGenderAlignmentToggle && (
+          <div className="absolute top-4 left-4">
+            <button
+              onClick={onGenderAlignmentToggle}
+              className={`w-10 h-10 rounded-full border border-white/20 shadow-lg backdrop-blur-sm transition-all duration-200 hover:scale-105 ${
+                genderAlignmentLocked
+                  ? 'bg-gradient-to-r from-green-500/80 to-blue-500/80 hover:from-green-500/90 hover:to-blue-500/90'
+                  : 'bg-black/50 hover:bg-black/70'
+              }`}
+              title={genderAlignmentLocked ? 'Gender matching locked' : 'Gender matching unlocked'}
+            >
+              <Volume2 className={`w-5 h-5 ${genderAlignmentLocked ? 'text-white' : 'text-white/70'} mx-auto`} />
+            </button>
+          </div>
+        )}
+        
         {/* Avatar Badge */}
         <div className="absolute top-4 right-4">
           <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-medium px-3 py-1 rounded-full border border-white/20 shadow-lg backdrop-blur-sm">
@@ -279,7 +302,11 @@ export default function FinalPreview({
                     genderMatch.isMatch ? 'bg-green-400' : 'bg-amber-400'
                   }`} />
                   <span className="text-xs">
-                    {genderMatch.isMatch ? '✓ Perfect match' : '⚠ Voice/Avatar mismatch'}
+                    {genderMatch.isMatch 
+                      ? '✓ Perfect match' 
+                      : '⚠ Voice/Avatar mismatch'
+                    }
+                    {genderAlignmentLocked && genderMatch.isMatch && ' 🔒'}
                   </span>
                 </div>
               )}
