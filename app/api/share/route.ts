@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { randomBytes } from 'crypto'
 
+// Force this route to use Node.js runtime to avoid static generation issues
+export const runtime = 'nodejs'
+
 export interface ShareData {
   id: string
   videoUrl: string
@@ -93,7 +96,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
+    const { searchParams } = request.nextUrl
     const shareId = searchParams.get('id')
 
     if (!shareId) {
@@ -142,7 +145,7 @@ export async function GET(request: NextRequest) {
 // Delete/expire share
 export async function DELETE(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
+    const { searchParams } = request.nextUrl
     const shareId = searchParams.get('id')
 
     if (!shareId) {

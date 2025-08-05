@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+// Force this route to use Node.js runtime to avoid static generation issues
+export const runtime = 'nodejs'
+
 const LEMONSLICE_API_BASE_URL = 'https://lemonslice.com/api'
 const LEMONSLICE_API_KEY = process.env.LEMONSLICE_API_KEY
 
