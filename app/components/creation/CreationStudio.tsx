@@ -7,6 +7,7 @@ import LyricsEditor from './LyricsEditor'
 import SongGeneration from './SongGeneration'
 import TitleInput from './TitleInput'
 import FinalPreview from './FinalPreview'
+import MelodyGramPreview from './MelodyGramPreview'
 import TipButton from '../ui/TipButton'
 import { lemonSliceApiService } from '../../services/lemonSliceApi'
 import { songStorageService, SavedSong } from '../../services/songStorage'
@@ -1287,6 +1288,24 @@ export default function CreationStudio() {
                   </div>
                 </label>
               </div>
+
+              {/* Dry Run Preview */}
+              {isDryRun && (
+                <MelodyGramPreview
+                  uploadedImage={uploadedImage}
+                  generatedImageUrl={generatedImageUrl}
+                  songTitle={songTitle}
+                  lyrics={lyrics}
+                  generatedSongUrl={generatedSongUrl}
+                  audioSelection={
+                    songHistory && songHistory.length > 0 && songHistory[currentSongIndex] 
+                      ? songHistory[currentSongIndex].audioSelection 
+                      : null
+                  }
+                  selectedVocal={selectedVocal}
+                  songLength={songLength}
+                />
+              )}
 
               {/* Action Buttons */}
               <div className="flex space-x-3 pt-4">
