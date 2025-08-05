@@ -8,10 +8,25 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('📤 Upload audio endpoint called')
+    console.log('📤 Environment check:', {
+      NODE_ENV: process.env.NODE_ENV,
+      VERCEL: process.env.VERCEL,
+      VERCEL_ENV: process.env.VERCEL_ENV
+    })
+    
     const formData = await request.formData()
+    console.log('📤 FormData received')
+    
     const audioFile = formData.get('audio') as File
+    console.log('📤 Audio file extracted:', {
+      name: audioFile?.name,
+      size: audioFile?.size,
+      type: audioFile?.type
+    })
     
     if (!audioFile) {
+      console.error('❌ No audio file in request')
       return NextResponse.json({ error: 'No audio file provided' }, { status: 400 })
     }
     
@@ -22,12 +37,17 @@ export async function POST(request: NextRequest) {
     
     // Create public uploads directory if it doesn't exist
     const uploadsDir = join(process.cwd(), 'public', 'temp-audio')
+    console.log('📤 Creating directory:', uploadsDir)
     await mkdir(uploadsDir, { recursive: true })
+    console.log('✅ Directory created/verified')
     
     // Save file
     const filePath = join(uploadsDir, fileName)
+    console.log('📤 Saving file to:', filePath)
     const arrayBuffer = await audioFile.arrayBuffer()
+    console.log('📤 Converting to buffer, size:', arrayBuffer.byteLength)
     await writeFile(filePath, Buffer.from(arrayBuffer))
+    console.log('✅ File written successfully')
     
     // Return public URL that LemonSlice API can access
     let baseUrl: string
@@ -72,9 +92,24 @@ export async function POST(request: NextRequest) {
     
   } catch (error) {
     console.error('❌ Audio upload error:', error)
+    console.error('❌ Error name:', error instanceof Error ? error.name : 'Unknown')
+    console.error('❌ Error message:', error instanceof Error ? error.message : 'Unknown error')
+    console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack')
+    console.error('❌ Environment:', {
+      NODE_ENV: process.env.NODE_ENV,
+      VERCEL: process.env.VERCEL,
+      VERCEL_ENV: process.env.VERCEL_ENV
+    })
+    
     return NextResponse.json({
       error: 'Failed to upload audio',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error',
+      errorName: error instanceof Error ? error.name : 'Unknown',
+      environment: {
+        NODE_ENV: process.env.NODE_ENV,
+        VERCEL: process.env.VERCEL,
+        VERCEL_ENV: process.env.VERCEL_ENV
+      }
     }, { status: 500 })
   }
 }
