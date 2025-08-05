@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+// Lazy initialization to avoid build-time errors
+let openai: OpenAI | null = null
+
+function getOpenAIClient() {
+  if (!openai && process.env.OPENAI_API_KEY) {
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    })
+  }
+  return openai
+}
 
 interface GenderAnalysisRequest {
   imageUrl: string
@@ -25,6 +33,14 @@ export async function POST(request: NextRequest) {
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json(
         { error: 'OpenAI API key not configured' },
+        { status: 500 }
+      )
+    }
+
+    const openaiClient = getOpenAIClient()
+    if (!openaiClient) {
+      return NextResponse.json(
+        { error: 'Failed to initialize OpenAI client' },
         { status: 500 }
       )
     }
@@ -66,7 +82,7 @@ Provide a JSON response with:
 
 Respond with ONLY the JSON object, no other text.`
 
-    const response = await openai.chat.completions.create({
+    const response = await openaiClient.chat.completions.create({
       model: 'gpt-4o',
       messages: [
         {

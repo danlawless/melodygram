@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+// Lazy initialization to avoid build-time errors
+let openai: OpenAI | null = null
+
+function getOpenAIClient() {
+  if (!openai && process.env.OPENAI_API_KEY) {
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    })
+  }
+  return openai
+}
 
 export async function POST(request: NextRequest) {
   let gender, style, mood
@@ -47,7 +55,12 @@ Generate ONE creative avatar prompt that would result in an appealing waist-up p
     
     userPrompt += `. Return ONLY the prompt text, no explanations or quotes.`
 
-    const completion = await openai.chat.completions.create({
+    const openaiClient = getOpenAIClient()
+    if (!openaiClient) {
+      throw new Error('OpenAI client not available')
+    }
+
+    const completion = await openaiClient.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: systemPrompt },

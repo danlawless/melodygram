@@ -13,9 +13,17 @@ interface LyricsGenerationOptions {
   provider?: 'openai' // Only GPT now
 }
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+// Lazy initialization to avoid build-time errors
+let openai: OpenAI | null = null
+
+function getOpenAIClient() {
+  if (!openai && process.env.OPENAI_API_KEY) {
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    })
+  }
+  return openai
+}
 
 /**
  * Create length-aware lyrics prompt
@@ -94,7 +102,12 @@ ${lyrics}
 Title:`
 
   try {
-    const response = await openai.chat.completions.create({
+    const openaiClient = getOpenAIClient()
+    if (!openaiClient) {
+      return 'Untitled Song'
+    }
+
+    const response = await openaiClient.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [{ role: 'user', content: titlePrompt }],
       max_tokens: 20,
@@ -132,7 +145,15 @@ export async function POST(request: NextRequest) {
 
     const prompt = createLyricsPrompt(options)
     
-    const response = await openai.chat.completions.create({
+    const openaiClient = getOpenAIClient()
+    if (!openaiClient) {
+      return NextResponse.json(
+        { error: 'Failed to initialize OpenAI client' },
+        { status: 500 }
+      )
+    }
+    
+    const response = await openaiClient.chat.completions.create({
       model: 'gpt-4o',
       messages: [
         { 
