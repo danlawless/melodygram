@@ -1113,7 +1113,7 @@ export default function CreationStudio() {
       <div className="bg-black border-b border-white/10">
         <div className="px-6 py-6">
           {/* Title Section */}
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center">
                 <Zap className="w-6 h-6 text-white" />
@@ -1149,7 +1149,7 @@ export default function CreationStudio() {
       </div>
 
       {/* Main Content */}
-      <div className="px-4 py-6 space-y-6 max-w-md mx-auto">
+      <div className="px-4 py-4 space-y-6 max-w-md mx-auto">
         {/* Voice Style Selection */}
         <div className="animate-entrance-delay-1">
           <div className="space-y-4">
