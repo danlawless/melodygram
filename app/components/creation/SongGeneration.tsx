@@ -1021,11 +1021,25 @@ export default function SongGeneration({
     }
   }
 
-  const handleSelectionMouseMove = (e: React.MouseEvent) => {
+  // Handle touch events for mobile support
+  const handleSelectionTouchStart = (e: React.TouchEvent, handle: 'start' | 'end' | 'playback') => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(handle)
+    
+    // Pause audio when starting to drag selection handles (but not playback scrubbing)
+    if ((handle === 'start' || handle === 'end') && audioElement && !audioElement.paused) {
+      audioElement.pause()
+      setIsPlaying(false)
+    }
+  }
+
+  // Unified handler for both mouse and touch move events
+  const handleSelectionMove = (clientX: number, currentTarget: Element) => {
     if (!isDragging || !generatedSong || !generatedSong.originalDuration) return
 
-    const rect = e.currentTarget.getBoundingClientRect()
-    const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width))
+    const rect = currentTarget.getBoundingClientRect()
+    const x = Math.max(0, Math.min(clientX - rect.left, rect.width))
     const timePosition = (x / rect.width) * generatedSong.originalDuration
 
     const currentSelection = generatedSong.audioSelection || {
@@ -1059,6 +1073,17 @@ export default function SongGeneration({
     }
   }
 
+  const handleSelectionMouseMove = (e: React.MouseEvent) => {
+    handleSelectionMove(e.clientX, e.currentTarget)
+  }
+
+  const handleSelectionTouchMove = (e: React.TouchEvent) => {
+    e.preventDefault() // Prevent scrolling on mobile
+    if (e.touches.length > 0) {
+      handleSelectionMove(e.touches[0].clientX, e.currentTarget)
+    }
+  }
+
   const handleSelectionMouseUp = () => {
     if (isDragging) {
       // When we finish dragging, reset playback position to selection start
@@ -1072,16 +1097,25 @@ export default function SongGeneration({
     setIsDragging(null)
   }
 
-  // Global mouse events for dragging
+  // Global mouse and touch events for dragging
   useEffect(() => {
     if (isDragging) {
       const handleGlobalMouseUp = () => {
         setIsDragging(null)
       }
 
+      const handleGlobalTouchEnd = () => {
+        setIsDragging(null)
+      }
+
       document.addEventListener('mouseup', handleGlobalMouseUp)
+      document.addEventListener('touchend', handleGlobalTouchEnd)
+      document.addEventListener('touchcancel', handleGlobalTouchEnd)
+      
       return () => {
         document.removeEventListener('mouseup', handleGlobalMouseUp)
+        document.removeEventListener('touchend', handleGlobalTouchEnd)
+        document.removeEventListener('touchcancel', handleGlobalTouchEnd)
       }
     }
   }, [isDragging])
@@ -1235,6 +1269,8 @@ export default function SongGeneration({
               onClick={handleProgressClick}
               onMouseMove={handleSelectionMouseMove}
               onMouseUp={handleSelectionMouseUp}
+              onTouchMove={handleSelectionTouchMove}
+              onTouchEnd={handleSelectionMouseUp}
             >
               {/* Waveform Background */}
               {isLoadingWaveform ? (
@@ -1291,11 +1327,12 @@ export default function SongGeneration({
                   {/* Current time indicator - draggable */}
                   {currentTime >= generatedSong.audioSelection.startTime && currentTime <= generatedSong.audioSelection.endTime && (
                     <div 
-                      className={`absolute top-0 bottom-0 w-3 bg-yellow-400/80 rounded-full z-20 shadow-lg cursor-grab active:cursor-grabbing hover:bg-yellow-300 transition-colors ${
+                      className={`absolute top-0 bottom-0 w-4 sm:w-3 bg-yellow-400/80 rounded-full z-20 shadow-lg cursor-grab active:cursor-grabbing hover:bg-yellow-300 active:bg-yellow-300 transition-colors touch-manipulation ${
                         isDragging === 'playback' ? 'bg-yellow-300 scale-110' : ''
                       }`}
-                      style={{ left: `${(currentTime / generatedSong.originalDuration) * 100 - 1.5}%` }}
+                      style={{ left: `${(currentTime / generatedSong.originalDuration) * 100 - 2}%` }}
                       onMouseDown={(e) => handleSelectionMouseDown(e, 'playback')}
+                      onTouchStart={(e) => handleSelectionTouchStart(e, 'playback')}
                       title="Drag to scrub through audio"
                     >
                       <div className="w-full h-full flex items-center justify-center">
@@ -1306,11 +1343,12 @@ export default function SongGeneration({
                   
                   {/* Start handle */}
                   <div 
-                    className={`absolute top-0 bottom-0 w-4 bg-green-500 rounded-l-lg cursor-ew-resize z-30 hover:bg-green-400 transition-colors shadow-lg ${
+                    className={`absolute top-0 bottom-0 w-6 sm:w-4 bg-green-500 rounded-l-lg cursor-ew-resize z-30 hover:bg-green-400 active:bg-green-400 transition-colors shadow-lg touch-manipulation ${
                       isDragging === 'start' ? 'bg-green-400 shadow-xl scale-105' : ''
                     }`}
                     style={{ left: `${(generatedSong.audioSelection.startTime / generatedSong.originalDuration) * 100}%` }}
                     onMouseDown={(e) => handleSelectionMouseDown(e, 'start')}
+                    onTouchStart={(e) => handleSelectionTouchStart(e, 'start')}
                     title="Drag to adjust start time"
                   >
                     <div className="w-full h-full flex items-center justify-center">
@@ -1320,11 +1358,12 @@ export default function SongGeneration({
                   
                   {/* End handle */}
                   <div 
-                    className={`absolute top-0 bottom-0 w-4 bg-blue-500 rounded-r-lg cursor-ew-resize z-30 hover:bg-blue-400 transition-colors shadow-lg ${
+                    className={`absolute top-0 bottom-0 w-6 sm:w-4 bg-blue-500 rounded-r-lg cursor-ew-resize z-30 hover:bg-blue-400 active:bg-blue-400 transition-colors shadow-lg touch-manipulation ${
                       isDragging === 'end' ? 'bg-blue-400 shadow-xl scale-105' : ''
                     }`}
-                    style={{ left: `${((generatedSong.audioSelection.startTime + generatedSong.audioSelection.duration) / generatedSong.originalDuration) * 100 - 4}%` }}
+                    style={{ left: `${((generatedSong.audioSelection.startTime + generatedSong.audioSelection.duration) / generatedSong.originalDuration) * 100 - 6}%` }}
                     onMouseDown={(e) => handleSelectionMouseDown(e, 'end')}
+                    onTouchStart={(e) => handleSelectionTouchStart(e, 'end')}
                     title="Drag to adjust end time"
                   >
                     <div className="w-full h-full flex items-center justify-center">
