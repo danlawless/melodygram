@@ -85,6 +85,9 @@ export default function CreationStudio() {
   const [showPreview, setShowPreview] = useState(false)
   const [showDebugModal, setShowDebugModal] = useState(false)
   const [isDebugMode, setIsDebugMode] = useState(false)
+  
+  // Dry run state for testing without generating
+  const [isDryRunEnabled, setIsDryRunEnabled] = useState(false)
 
   // Check for debug mode on mount
   useEffect(() => {
@@ -1304,8 +1307,17 @@ export default function CreationStudio() {
                 </div>
               ) : (
                 <div className="flex items-center justify-center space-x-2">
-                  <Zap className="w-6 h-6" />
-                  <span>Generate MelodyGram</span>
+                  {isDryRunEnabled ? (
+                    <>
+                      <Terminal className="w-6 h-6" />
+                      <span>🧪 Dry Run MelodyGram</span>
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="w-6 h-6" />
+                      <span>Generate MelodyGram</span>
+                    </>
+                  )}
                 </div>
               )}
             </button>
@@ -1465,7 +1477,7 @@ export default function CreationStudio() {
 
                   {/* Collapsible Preview Content */}
                   {showPreview && (
-                    <div className="animate-in slide-in-from-top-5 duration-300">
+                    <div className="animate-in slide-in-from-top-5 duration-300 space-y-4">
                       <MelodyGramPreview
                         uploadedImage={uploadedImage}
                         generatedImageUrl={generatedImageUrl}
@@ -1481,6 +1493,24 @@ export default function CreationStudio() {
                         songLength={songLength}
                         onClose={() => setShowPreview(false)}
                       />
+                      
+                      {/* Dry Run Checkbox */}
+                      <div className="flex items-center justify-center pt-3 border-t border-gray-700/50">
+                        <label className="flex items-center space-x-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={isDryRunEnabled}
+                            onChange={(e) => setIsDryRunEnabled(e.target.checked)}
+                            className="w-4 h-4 text-purple-600 bg-gray-800 border-gray-600 rounded focus:ring-purple-500 focus:ring-2"
+                          />
+                          <span className="text-sm text-gray-300">
+                            🧪 Dry Run Mode
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            (Test URLs & flow without generating)
+                          </span>
+                        </label>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1494,7 +1524,7 @@ export default function CreationStudio() {
                   Cancel
                 </button>
                 <button
-                  onClick={() => handleGenerateMelodyGram(false)}
+                  onClick={() => handleGenerateMelodyGram(isDryRunEnabled)}
                   disabled={(() => {
                     const costCredits = (() => {
                       if (songHistory && songHistory.length > 0) {
@@ -1539,7 +1569,8 @@ export default function CreationStudio() {
                       return getCreditsForLength(songLength)
                     })()
                     const hasEnoughCredits = creditSystemService.getUserCredits().balance >= costCredits
-                    return hasEnoughCredits ? `Generate MelodyGram` : 'Insufficient Credits'
+                    if (!hasEnoughCredits) return 'Insufficient Credits'
+                    return isDryRunEnabled ? '🧪 Dry Run MelodyGram' : 'Generate MelodyGram'
                   })()}
                 </button>
               </div>
