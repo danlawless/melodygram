@@ -29,48 +29,51 @@ export async function POST(request: NextRequest) {
       type: imageBlob.type
     })
     
-    // Check if we're in production or development environment
-    const isProduction = process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production'
-    const hasNgrokAccess = process.env.NEXT_PUBLIC_NGROK_URL && !isProduction
+    // Simple storage logic: Local for development, production-ready for deployment
+    const isProduction = process.env.VERCEL_ENV === 'production'
     
-    if (hasNgrokAccess) {
-      // DEVELOPMENT: Upload to ngrok for permanent storage
-      console.log('🖼️ Backend: Development mode - using ngrok for permanent storage')
-      
-      const ngrokUrl = process.env.NEXT_PUBLIC_NGROK_URL
-      const uploadEndpoint = `${ngrokUrl}/api/upload-image-blob`
-      
-      console.log('🖼️ Backend: Uploading to ngrok:', uploadEndpoint)
-      
-      const formData = new FormData()
-      formData.append('image', imageBlob, 'generated-avatar.png')
-      
-      const uploadResponse = await fetch(uploadEndpoint, {
-        method: 'POST',
-        body: formData
-      })
-      
-      if (!uploadResponse.ok) {
-        const uploadError = await uploadResponse.text()
-        throw new Error(`Failed to upload image: ${uploadResponse.statusText} - ${uploadError}`)
-      }
-      
-      const uploadData = await uploadResponse.json()
-      
-      if (!uploadData.success) {
-        throw new Error(`Upload failed: ${uploadData.error}`)
-      }
-      
-      console.log('✅ Backend: Image stored permanently via ngrok:', uploadData.url)
-      
-      return NextResponse.json({
-        success: true,
-        permanentUrl: uploadData.url
-      })
-      
-    } else {
-      // PRODUCTION: Use base64 data URL (most reliable, never expires)
+    if (isProduction) {
+      // Production: Use base64 (most reliable, never expires, works everywhere)
       console.log('🖼️ Backend: Production mode - using base64 data URL for permanent storage')
+    } else {
+      // Development: Save locally and use localhost URL (fast and simple)
+      try {
+        console.log('🖼️ Backend: Development mode - saving image locally')
+        
+        const uploadEndpoint = '/api/upload-image-blob'
+        const formData = new FormData()
+        formData.append('image', imageBlob, 'generated-avatar.png')
+        
+        const uploadResponse = await fetch(`http://localhost:${process.env.PORT || 3000}${uploadEndpoint}`, {
+          method: 'POST',
+          body: formData
+        })
+        
+        if (uploadResponse.ok) {
+          const uploadData = await uploadResponse.json()
+          if (uploadData.success) {
+            // Use localhost URL for local development
+            const localUrl = `http://localhost:${process.env.PORT || 3000}/temp-avatars/${uploadData.filename}`
+            console.log('✅ Backend: Image stored locally:', localUrl)
+            console.log('💡 Backend: For LemonSlice API, you\'ll need ngrok or use dry run mode')
+            
+            return NextResponse.json({
+              success: true,
+              permanentUrl: localUrl
+            })
+          }
+        }
+        
+        console.log('⚠️ Backend: Local storage failed, using base64 fallback...')
+      } catch (error) {
+        console.log('⚠️ Backend: Local storage error:', error.message, '- using base64 fallback...')
+      }
+    }
+    
+    // Fallback: Base64 data URL (works everywhere, never expires)
+    {
+      // FALLBACK: Use base64 data URL (most reliable, never expires)
+      console.log('🖼️ Backend: Using base64 data URL for permanent storage')
       console.log('🌍 Environment:', {
         VERCEL_ENV: process.env.VERCEL_ENV,
         NODE_ENV: process.env.NODE_ENV,

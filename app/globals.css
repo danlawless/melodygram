@@ -35,6 +35,15 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Ensure mobile status bar areas are filled with black */
+@supports (padding-top: env(safe-area-inset-top)) {
+  html {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    background-color: var(--bg-primary);
+  }
+}
+
 /* Smooth scrolling */
 html {
   scroll-behavior: smooth;
@@ -66,6 +75,13 @@ html {
   
   .safe-area-bottom {
     padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  /* Ensure mobile safe areas have proper black background */
+  .mobile-safe-area {
+    background-color: var(--bg-primary);
+    min-height: 100vh;
+    min-height: 100dvh; /* Dynamic viewport height for mobile */
   }
   
   .glass-effect {

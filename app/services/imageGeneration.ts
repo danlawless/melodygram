@@ -44,30 +44,25 @@ class ImageGenerationService {
       console.log('🖼️ OpenAI image generated, downloading and storing permanently...')
       
       try {
-        // Download the image immediately and store it via ngrok
+        // Download the image immediately and store it permanently
         const permanentUrl = await this.storeImagePermanently(data.imageUrl)
         
         console.log('✅ Image stored permanently:', permanentUrl)
         
         return {
-          imageUrl: permanentUrl,    // Use permanent ngrok URL as primary
+          imageUrl: permanentUrl,    // Use permanent URL as primary
           proxiedUrl: permanentUrl,  // Same permanent URL (no expiration)
           revisedPrompt: data.revisedPrompt,
           source: 'openai',
           originalUrl: data.imageUrl // Keep original for reference
         }
       } catch (storageError) {
-        console.warn('⚠️ Failed to store image permanently, using temporary URL:', storageError)
+        console.error('❌ CRITICAL: Failed to store image permanently:', storageError)
+        console.error('❌ NEVER using expired DALL-E URL - this would fail!')
         
-        // Fallback to proxied URL if permanent storage fails
-        const proxiedUrl = `/api/proxy-image?url=${encodeURIComponent(data.imageUrl)}`
-        
-        return {
-          imageUrl: data.imageUrl,   // Original external URL
-          proxiedUrl: proxiedUrl,    // Our proxied URL (temporary)
-          revisedPrompt: data.revisedPrompt,
-          source: 'openai'
-        }
+        // NEVER fallback to expired DALL-E URLs - they expire in 2 hours!
+        // Instead, throw an error so the user knows generation failed
+        throw new Error(`Image generation failed: Unable to store image permanently. ${storageError.message}`)
       }
     } catch (error) {
       console.error('OpenAI image generation failed:', error)

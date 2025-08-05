@@ -63,6 +63,31 @@ export default function CreationStudio() {
     context?: any
   } | null>(null)
   const [showErrorDetails, setShowErrorDetails] = useState(false)
+  
+  // Dry run results state
+  const [dryRunResults, setDryRunResults] = useState<{
+    success: boolean
+    timestamp: string
+    imageAnalysis: {
+      originalUrl: string
+      finalUrl: string
+      isProxyUrl: boolean
+      isDallEUrl: boolean
+      isDirectImageUrl: boolean
+    }
+    audioAnalysis: {
+      finalUrl: string
+      isClipped: boolean
+    }
+    costAnalysis: {
+      estimatedCost: string
+      costStatus: string
+    }
+    apiParams: any
+    warnings: string[]
+    summary: string
+  } | null>(null)
+  const [showDryRunResults, setShowDryRunResults] = useState(false)
   const [isTitleGenerating, setIsTitleGenerating] = useState(false)
   const [avatarVideoUrl, setAvatarVideoUrl] = useState<string | null>(null)
   const [songLength, setSongLength] = useState<number>(30) // Default song length
@@ -88,6 +113,14 @@ export default function CreationStudio() {
   
   // Dry run state for testing without generating
   const [isDryRunEnabled, setIsDryRunEnabled] = useState(false)
+  
+  // Clear dry run results when dry run is disabled
+  useEffect(() => {
+    if (!isDryRunEnabled && dryRunResults) {
+      setDryRunResults(null)
+      setShowDryRunResults(false)
+    }
+  }, [isDryRunEnabled, dryRunResults])
 
   // Check for debug mode on mount
   useEffect(() => {
@@ -809,9 +842,66 @@ export default function CreationStudio() {
             console.log('🧪 Everything looks good! Uncheck dry run to proceed with real generation.')
             console.log('🧪 ====================================================')
             
+            // Capture structured dry run results for UI display
+            const isProxyUrl = fixedImageUrl?.includes('/api/proxy-image') || false
+            const isDallEUrl = fixedImageUrl?.includes('oaidalleapiprodscus.blob.core.windows.net') || false
+            const isDirectImageUrl = Boolean(fixedImageUrl && (
+              fixedImageUrl.match(/\.(png|jpg|jpeg|gif|webp)(\?|$)/i) !== null ||
+              fixedImageUrl.includes('temp-avatars') ||
+              fixedImageUrl.includes('ngrok') ||
+              isDallEUrl
+            ))
+            const isClipped = finalAudioUrl?.includes('temp-audio') || false
+            
+            const warnings: string[] = []
+            let summary: string
+            
+            if (isProxyUrl) {
+              warnings.push('⚠️ Still using proxy URL for image! LemonSlice cannot access this.')
+              warnings.push('⚠️ This will cause the generation to fail.')
+              summary = '❌ Issues found - Generation will likely fail due to proxy URL'
+            } else if (isDirectImageUrl) {
+              if (isDallEUrl) {
+                summary = '✅ Perfect! Using direct DALL-E URL that LemonSlice can access.'
+              } else {
+                summary = '✅ Good! Using direct image URL that LemonSlice should be able to access.'
+              }
+            } else {
+              warnings.push('⚠️ Unusual image URL format. Verify LemonSlice can access this URL.')
+              summary = '⚠️ Unusual image URL format - may need verification'
+            }
+            
+            if (!isClipped) {
+              warnings.push('⚠️ Using full song instead of clipped audio - this will be expensive!')
+            }
+            
+            setDryRunResults({
+              success: true,
+              timestamp: new Date().toISOString(),
+              imageAnalysis: {
+                originalUrl: generatedImageUrl || 'None',
+                finalUrl: fixedImageUrl || 'None',
+                isProxyUrl,
+                isDallEUrl,
+                isDirectImageUrl
+              },
+              audioAnalysis: {
+                finalUrl: finalAudioUrl || 'None',
+                isClipped
+              },
+              costAnalysis: {
+                estimatedCost: `$${costEstimate.costUSD}`,
+                costStatus: costCheck.message || 'Within limits'
+              },
+              apiParams: lemonSliceParams,
+              warnings,
+              summary
+            })
+            
+            setShowDryRunResults(true)
+            
             // Show success notification for dry run
             console.log('🧪 Dry run completed successfully! Check console logs above for detailed results.')
-            alert('🧪 Dry Run Completed!\n\nCheck the browser console for detailed results.\n\nIf everything looks good, uncheck "Dry Run Mode" and run again for real generation.')
             return
           }
           
@@ -1348,9 +1438,23 @@ export default function CreationStudio() {
 
       {/* Credit Confirmation Modal */}
       {showCreditConfirmModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 overflow-y-auto">
+        <div 
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 overflow-y-auto"
+          onClick={(e) => {
+            // Only close modal if clicking directly on backdrop, not on modal content
+            if (e.target === e.currentTarget) {
+              setShowCreditConfirmModal(false)
+            }
+          }}
+        >
           <div className="min-h-screen flex items-start justify-center p-4 py-8">
-            <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 w-full max-w-4xl shadow-2xl max-h-[80vh] overflow-y-auto">
+            <div 
+              className="bg-gray-900 border border-gray-700 rounded-xl p-6 w-full max-w-4xl shadow-2xl max-h-[80vh] overflow-y-auto"
+              onClick={(e) => {
+                // Prevent backdrop click when clicking on modal content
+                e.stopPropagation()
+              }}
+            >
             <div className="text-center space-y-4 pb-24">
               {/* Header */}
               <div className="flex items-center justify-center space-x-2 mb-4">
@@ -1466,7 +1570,15 @@ export default function CreationStudio() {
               <div className="space-y-3">
                   {/* Toggle Preview Button */}
                   <button
-                    onClick={() => setShowPreview(!showPreview)}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setShowPreview(!showPreview)
+                    }}
+                    onTouchEnd={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                    }}
                     className="w-full flex items-center justify-center space-x-2 py-2 text-gray-400 hover:text-white transition-colors"
                   >
                     <ChevronDown 
@@ -1515,16 +1627,173 @@ export default function CreationStudio() {
                   )}
                 </div>
 
+              {/* Dry Run Results Display */}
+              {dryRunResults && (
+                <div className="mb-4 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border border-purple-200 dark:border-purple-700 rounded-xl p-5 shadow-lg">
+                  <div className="text-center">
+                    {/* Header */}
+                    <div className="flex items-center justify-center space-x-3 mb-4">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center shadow-md">
+                        <span className="text-xl">🧪</span>
+                      </div>
+                      <div className="text-center">
+                        <h4 className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent font-bold text-lg">
+                          Dry Run Results
+                        </h4>
+                        <span className="text-xs text-purple-500 dark:text-purple-400 opacity-75">
+                          {new Date(dryRunResults.timestamp).toLocaleTimeString()}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {/* Summary */}
+                    <div className="mb-4 p-3 bg-white/50 dark:bg-gray-800/50 rounded-lg border border-purple-100 dark:border-purple-800">
+                      <p className="bg-gradient-to-r from-purple-700 to-pink-700 bg-clip-text text-transparent text-base font-semibold">
+                        {dryRunResults.summary}
+                      </p>
+                    </div>
+                    
+                    {/* Warnings */}
+                    {dryRunResults.warnings.length > 0 && (
+                      <div className="mb-4 space-y-2">
+                        {dryRunResults.warnings.map((warning, index) => (
+                          <div key={index} className="bg-gradient-to-r from-orange-50 to-yellow-50 dark:from-orange-900/20 dark:to-yellow-900/20 border border-orange-200 dark:border-orange-700 px-4 py-3 rounded-lg">
+                            <p className="text-orange-700 dark:text-orange-300 text-sm font-medium">
+                              {warning}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {/* Quick Status - Centered Grid */}
+                    <div className="flex justify-center mb-5">
+                      <div className="grid grid-cols-3 gap-8 text-sm">
+                        <div className="flex flex-col items-center space-y-2">
+                          <div className="w-12 h-12 rounded-full bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-800 dark:to-pink-800 flex items-center justify-center shadow-md">
+                            <span className="text-2xl">{dryRunResults.imageAnalysis.isDirectImageUrl ? '✅' : (dryRunResults.imageAnalysis.isProxyUrl ? '❌' : '⚠️')}</span>
+                          </div>
+                          <span className="text-purple-700 dark:text-purple-300 font-semibold">Image URL</span>
+                        </div>
+                        <div className="flex flex-col items-center space-y-2">
+                          <div className="w-12 h-12 rounded-full bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-800 dark:to-pink-800 flex items-center justify-center shadow-md">
+                            <span className="text-2xl">{dryRunResults.audioAnalysis.isClipped ? '✅' : '⚠️'}</span>
+                          </div>
+                          <span className="text-purple-700 dark:text-purple-300 font-semibold">Audio Clipped</span>
+                        </div>
+                        <div className="flex flex-col items-center space-y-2">
+                          <div className="w-12 h-12 rounded-full bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-800 dark:to-pink-800 flex items-center justify-center shadow-md">
+                            <span className="text-2xl">💰</span>
+                          </div>
+                          <span className="text-purple-700 dark:text-purple-300 font-semibold">{dryRunResults.costAnalysis.estimatedCost}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Show Details Button */}
+                    <button
+                      onClick={() => setShowDryRunResults(!showDryRunResults)}
+                      className="px-6 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white text-sm font-medium rounded-lg shadow-md transition-all duration-200 hover:shadow-lg"
+                      title="Click to see full dry run details"
+                    >
+                      {showDryRunResults ? 'Hide Details' : 'Show Details'}
+                    </button>
+                  </div>
+                  
+                  {/* Full Dry Run Details (Expandable) */}
+                  {showDryRunResults && (
+                    <div className="mt-5 pt-4 border-t border-purple-200 dark:border-purple-700">
+                      <div className="space-y-4 text-sm">
+                        {/* Image Analysis */}
+                        <div className="bg-white/30 dark:bg-gray-800/30 p-4 rounded-lg border border-purple-100 dark:border-purple-800">
+                          <div className="flex items-center space-x-2 mb-3">
+                            <span className="text-lg">📸</span>
+                            <strong className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent font-semibold">Image Analysis</strong>
+                          </div>
+                          <div className="space-y-2 text-xs">
+                            <div><span className="text-purple-600 dark:text-purple-400 font-medium">Original:</span> <span className="font-mono text-gray-700 dark:text-gray-300 break-all ml-2">{dryRunResults.imageAnalysis.originalUrl}</span></div>
+                            <div><span className="text-purple-600 dark:text-purple-400 font-medium">Final:</span> <span className="font-mono text-gray-700 dark:text-gray-300 break-all ml-2">{dryRunResults.imageAnalysis.finalUrl}</span></div>
+                            <div><span className="text-purple-600 dark:text-purple-400 font-medium">Is Proxy:</span> <span className={`ml-2 font-medium ${dryRunResults.imageAnalysis.isProxyUrl ? 'text-red-600' : 'text-green-600'}`}>{dryRunResults.imageAnalysis.isProxyUrl ? 'YES ❌' : 'NO ✅'}</span></div>
+                            <div><span className="text-purple-600 dark:text-purple-400 font-medium">Is Direct URL:</span> <span className={`ml-2 font-medium ${dryRunResults.imageAnalysis.isDirectImageUrl ? 'text-green-600' : 'text-red-600'}`}>{dryRunResults.imageAnalysis.isDirectImageUrl ? 'YES ✅' : 'NO ❌'}</span></div>
+                            <div><span className="text-purple-600 dark:text-purple-400 font-medium">Is DALL-E:</span> <span className={`ml-2 font-medium ${dryRunResults.imageAnalysis.isDallEUrl ? 'text-green-600' : 'text-gray-500'}`}>{dryRunResults.imageAnalysis.isDallEUrl ? 'YES ✅' : 'NO'}</span></div>
+                          </div>
+                        </div>
+                        
+                        {/* Audio Analysis */}
+                        <div className="bg-white/30 dark:bg-gray-800/30 p-4 rounded-lg border border-purple-100 dark:border-purple-800">
+                          <div className="flex items-center space-x-2 mb-3">
+                            <span className="text-lg">🎵</span>
+                            <strong className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent font-semibold">Audio Analysis</strong>
+                          </div>
+                          <div className="space-y-2 text-xs">
+                            <div><span className="text-purple-600 dark:text-purple-400 font-medium">URL:</span> <span className="font-mono text-gray-700 dark:text-gray-300 break-all ml-2">{dryRunResults.audioAnalysis.finalUrl}</span></div>
+                            <div><span className="text-purple-600 dark:text-purple-400 font-medium">Is Clipped:</span> <span className={`ml-2 font-medium ${dryRunResults.audioAnalysis.isClipped ? 'text-green-600' : 'text-orange-600'}`}>{dryRunResults.audioAnalysis.isClipped ? 'YES ✅' : 'NO ⚠️'}</span></div>
+                          </div>
+                        </div>
+                        
+                        {/* Cost Analysis */}
+                        <div className="bg-white/30 dark:bg-gray-800/30 p-4 rounded-lg border border-purple-100 dark:border-purple-800">
+                          <div className="flex items-center space-x-2 mb-3">
+                            <span className="text-lg">💰</span>
+                            <strong className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent font-semibold">Cost Analysis</strong>
+                          </div>
+                          <div className="space-y-2 text-xs">
+                            <div><span className="text-purple-600 dark:text-purple-400 font-medium">Estimated Cost:</span> <span className="text-gray-700 dark:text-gray-300 ml-2 font-medium">{dryRunResults.costAnalysis.estimatedCost}</span></div>
+                            <div><span className="text-purple-600 dark:text-purple-400 font-medium">Status:</span> <span className="text-gray-700 dark:text-gray-300 ml-2">{dryRunResults.costAnalysis.costStatus}</span></div>
+                          </div>
+                        </div>
+                        
+                        {/* API Parameters */}
+                        <div className="bg-white/30 dark:bg-gray-800/30 p-4 rounded-lg border border-purple-100 dark:border-purple-800">
+                          <div className="flex items-center space-x-2 mb-3">
+                            <span className="text-lg">🔧</span>
+                            <strong className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent font-semibold">API Parameters</strong>
+                          </div>
+                          <pre className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/30 dark:to-pink-900/30 p-3 rounded-lg text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-mono text-xs overflow-x-auto max-h-32 overflow-y-auto border border-purple-100 dark:border-purple-800">
+{JSON.stringify(dryRunResults.apiParams, null, 2)}
+                          </pre>
+                        </div>
+                        
+                        <div className="pt-3 border-t border-purple-200 dark:border-purple-700 text-center">
+                          <button
+                            onClick={() => setDryRunResults(null)}
+                            className="px-4 py-2 bg-gradient-to-r from-gray-400 to-gray-500 hover:from-gray-500 hover:to-gray-600 text-white text-xs font-medium rounded-lg transition-all duration-200"
+                          >
+                            Clear Results
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Action Buttons */}
               <div className="flex space-x-3 pt-4">
                 <button
-                  onClick={() => setShowCreditConfirmModal(false)}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    setShowCreditConfirmModal(false)
+                  }}
+                  onTouchEnd={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                  }}
                   className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
                 >
                   Cancel
                 </button>
                 <button
-                  onClick={() => handleGenerateMelodyGram(isDryRunEnabled)}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    handleGenerateMelodyGram(isDryRunEnabled)
+                  }}
+                  onTouchEnd={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                  }}
                   disabled={(() => {
                     const costCredits = (() => {
                       if (songHistory && songHistory.length > 0) {

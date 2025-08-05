@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   description: 'Transform your photos into personalized singing avatars with AI. Upload, write lyrics, and create magical music experiences.',
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'black-translucent',
+    statusBarStyle: 'black',
     title: 'MelodyGram'
   }
 }
@@ -21,7 +21,9 @@ export const viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: '#8b5cf6'
+  viewportFit: 'cover',
+  themeColor: '#0a0a0a',
+  colorScheme: 'dark'
 }
 
 export default function RootLayout({

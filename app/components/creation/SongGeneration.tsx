@@ -65,26 +65,72 @@ export const createClippedAudio = async (audioUrl: string, selection: AudioSelec
       sampleRate: audioBuffer.sampleRate
     })
     
-    // Save blob locally via ngrok for direct LemonSlice access
-    console.log('📤 Saving WAV blob locally via ngrok for direct LemonSlice access...')
-    console.log('🌍 This bypasses Vercel entirely - files saved to local ngrok server')
-    
+    // Save blob for LemonSlice access - smart environment detection
     const formData = new FormData()
     formData.append('audio', audioBlob, `clipped.${fileExtension}`)
     
-    // Use ngrok for file storage since LemonSlice needs external access
-    const ngrokUrl = process.env.NEXT_PUBLIC_NGROK_URL || 'https://e9d839e3b493.ngrok-free.app'
-    const uploadEndpoint = `${ngrokUrl}/api/upload-audio-blob`
+    // Smart environment detection for upload endpoint
+    let uploadEndpoint: string
+    let uploadDescription: string
     
-    console.log('📤 Using ngrok upload endpoint for external LemonSlice access:', uploadEndpoint)
-    console.log('🎯 This saves files to local ngrok server, immediately accessible to LemonSlice API')
-    console.log('🌍 Ngrok URL from env:', ngrokUrl)
+    const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost'
+    const ngrokUrl = process.env.NEXT_PUBLIC_NGROK_URL
+    
+    if (isLocalhost && !ngrokUrl) {
+      // Running on localhost without ngrok - use local API
+      uploadEndpoint = '/api/upload-audio-blob'
+      uploadDescription = 'local development API (files saved locally)'
+      console.log('📤 Using local API endpoint for development')
+      console.log('💡 Note: LemonSlice API cannot access localhost URLs')
+      console.log('💡 For production testing, set NEXT_PUBLIC_NGROK_URL in your .env.local')
+    } else if (isLocalhost && ngrokUrl) {
+      // Running on localhost with ngrok configured - use ngrok
+      uploadEndpoint = `${ngrokUrl}/api/upload-audio-blob`
+      uploadDescription = 'ngrok tunnel (externally accessible)'
+      console.log('📤 Using ngrok tunnel for external access')
+      console.log('🌍 Ngrok URL:', ngrokUrl)
+    } else {
+      // Running on Vercel or other production environment
+      uploadEndpoint = '/api/upload-audio-blob'
+      uploadDescription = 'production API (externally accessible)'
+      console.log('📤 Using production API endpoint')
+    }
+    
+    console.log('📤 Saving WAV blob via', uploadDescription)
+    console.log('🎯 Upload endpoint:', uploadEndpoint)
+    
     const uploadResponse = await fetch(uploadEndpoint, {
       method: 'POST',
       body: formData
     })
     
     if (!uploadResponse.ok) {
+      console.error('❌ Upload failed:', {
+        status: uploadResponse.status,
+        statusText: uploadResponse.statusText,
+        endpoint: uploadEndpoint,
+        isLocalhost,
+        ngrokUrl
+      })
+      
+      // If ngrok fails on localhost, fall back to local API
+      if (isLocalhost && uploadEndpoint.includes('ngrok')) {
+        console.log('🔄 Ngrok failed, falling back to local API...')
+        const fallbackResponse = await fetch('/api/upload-audio-blob', {
+          method: 'POST',
+          body: formData
+        })
+        
+        if (!fallbackResponse.ok) {
+          throw new Error(`Both ngrok and local API failed. Ngrok: ${uploadResponse.statusText}, Local: ${fallbackResponse.statusText}`)
+        }
+        
+        console.log('✅ Fallback to local API successful')
+        const result = await fallbackResponse.json()
+        console.log('📁 Clipped audio saved locally:', result.url)
+        return result.url
+      }
+      
       throw new Error(`Failed to upload audio: ${uploadResponse.statusText}`)
     }
     

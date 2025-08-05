@@ -7,7 +7,8 @@ import { imageGenerationService } from '../../services/imageGeneration'
 
 interface GeneratedAvatar {
   id: string
-  imageUrl: string
+  imageUrl?: string // Optional - not stored for base64 URLs to save localStorage space
+  displayUrl?: string // For UI display - not persisted to localStorage
   thumbnailUrl?: string // Smaller version for storage efficiency
   createdAt: string
   prompt: string
@@ -15,6 +16,7 @@ interface GeneratedAvatar {
   mood?: string
   favorite?: boolean // Heart/favorite functionality
   isTemporaryUrl?: boolean // Flag to indicate URL may expire (GPT/DALL-E URLs)
+  isBase64?: boolean // Flag to indicate if this was a base64 URL
   gender?: string // Track gender for voice/avatar matching (male/female)
 }
 
@@ -166,14 +168,32 @@ export default function ImageUpload({ uploadedImage, onImageUpload, onImageGener
           avatars.map(async (avatar) => {
             if (!avatar.thumbnailUrl) {
               try {
-                const thumbnailUrl = await createThumbnail(avatar.imageUrl, 96) // Smaller thumbnails to save storage
-                return { ...avatar, thumbnailUrl }
+                // Use displayUrl for thumbnail creation if available, fallback to imageUrl
+                const imageForThumbnail = avatar.displayUrl || avatar.imageUrl
+                const thumbnailUrl = await createThumbnail(imageForThumbnail, 96) // Smaller thumbnails to save storage
+                
+                // For storage efficiency, remove base64 URLs but keep display info
+                const storageAvatar = {
+                  ...avatar,
+                  thumbnailUrl,
+                  // Don't store massive base64 URLs in localStorage
+                  imageUrl: avatar.imageUrl?.startsWith('data:') ? undefined : avatar.imageUrl
+                }
+                
+                return storageAvatar
               } catch (error) {
                 console.warn('Failed to create thumbnail, using original:', error)
-                return avatar
+                // Remove base64 URLs even on error to prevent storage issues
+                return {
+                  ...avatar,
+                  imageUrl: avatar.imageUrl?.startsWith('data:') ? undefined : avatar.imageUrl
+                }
               }
             }
-            return avatar
+            return {
+              ...avatar,
+              imageUrl: avatar.imageUrl?.startsWith('data:') ? undefined : avatar.imageUrl
+            }
           })
         )
         
@@ -517,18 +537,25 @@ export default function ImageUpload({ uploadedImage, onImageUpload, onImageGener
           onImageGenerated(imageUrlToUse)
         }
 
-        // Add to avatar history (with appropriate URL)
+        // Add to avatar history (storage-efficient for base64 URLs)
+        const isBase64Url = finalImageUrl.startsWith('data:')
         const newAvatar: GeneratedAvatar = {
           id: `avatar_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          imageUrl: finalImageUrl,
+          imageUrl: isBase64Url ? undefined : finalImageUrl, // Don't store massive base64 URLs in localStorage
+          displayUrl: finalImageUrl, // Keep display URL for UI (not stored in localStorage)
           createdAt: new Date().toISOString(),
           prompt: `${prompt}, waist-up photography style, clear facial features, upper body visible, suitable for avatar use${genderPrompt}`,
           style: selectedStyle || 'photorealistic',
           mood: selectedMood || 'friendly',
           favorite: false,
-          isTemporaryUrl: false, // All URLs are now permanent via ngrok storage
+          isTemporaryUrl: false,
+          isBase64: isBase64Url, // Flag for handling
           gender: selectedGender // Track gender for voice/avatar matching
         }
+        
+        console.log(isBase64Url ? 
+          '💾 Using storage-efficient mode (base64 URL not stored in localStorage)' : 
+          '💾 Storing regular URL in localStorage')
         
         await addToAvatarHistory(newAvatar)
         
