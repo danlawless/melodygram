@@ -9,13 +9,19 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'MelodyGram - Create Beautiful Singing Avatars',
   description: 'Transform your photos into personalized singing avatars with AI. Upload, write lyrics, and create magical music experiences.',
-  viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
-  themeColor: '#8b5cf6',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
     title: 'MelodyGram'
   }
+}
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: '#8b5cf6'
 }
 
 export default function RootLayout({

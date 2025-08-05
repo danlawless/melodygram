@@ -8,6 +8,14 @@ export async function POST(
   { params }: { params: { jobId: string } }
 ) {
   try {
+    // Skip API calls during build time to prevent static generation failures
+    if (process.env.NODE_ENV === 'production' && !LEMONSLICE_API_KEY.startsWith('sk-')) {
+      return NextResponse.json({
+        error: 'Job cancellation API not configured',
+        message: 'LemonSlice API key not properly configured for production'
+      }, { status: 503 })
+    }
+    
     const { jobId } = params
     
     if (!jobId) {

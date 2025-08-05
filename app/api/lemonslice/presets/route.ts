@@ -5,6 +5,34 @@ const LEMONSLICE_API_KEY = process.env.LEMONSLICE_API_KEY || 'sk-1990426d-aff0-4
 
 export async function GET() {
   try {
+    // Skip API calls during build time to prevent static generation failures
+    if (process.env.NODE_ENV === 'production' && !LEMONSLICE_API_KEY.startsWith('sk-')) {
+      // Return fallback presets if API not configured for production
+      const fallbackPresets = {
+        presets: [
+          {
+            id: 'natural',
+            name: 'Natural',
+            description: 'Natural speaking animation with subtle movements',
+            animation_type: 'natural'
+          },
+          {
+            id: 'expressive',
+            name: 'Expressive',
+            description: 'More animated with expressive gestures and movements',
+            animation_type: 'expressive'
+          },
+          {
+            id: 'subtle',
+            name: 'Subtle',
+            description: 'Minimal animation focusing on lip sync',
+            animation_type: 'subtle'
+          }
+        ]
+      }
+      return NextResponse.json(fallbackPresets)
+    }
+    
     const response = await fetch(`${LEMONSLICE_API_BASE_URL}/avatar/presets`, {
       method: 'GET',
       headers: {

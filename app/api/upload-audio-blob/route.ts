@@ -26,12 +26,13 @@ export async function POST(request: NextRequest) {
     const arrayBuffer = await audioFile.arrayBuffer()
     await writeFile(filePath, Buffer.from(arrayBuffer))
     
-    // Return public URL
-    // HARDCODED: Use working ngrok URL for LemonSlice access
-    const HARDCODED_NGROK_URL = "https://e9d839e3b493.ngrok-free.app"
-    const publicUrl = `${HARDCODED_NGROK_URL}/temp-audio/${fileName}`
+    // Return public URL  
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
+                   process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 
+                   'http://localhost:3000'
+    const publicUrl = `${baseUrl}/temp-audio/${fileName}`
     
-    console.log('🌍 Using HARDCODED ngrok URL for LemonSlice access:', publicUrl)
+    console.log('🌍 Using dynamic base URL for audio access:', publicUrl)
     
     console.log('✅ Uploaded clipped audio:', publicUrl)
     

@@ -5,7 +5,16 @@ const LEMONSLICE_API_KEY = process.env.LEMONSLICE_API_KEY || 'sk-1990426d-aff0-4
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
+    // Skip API calls during build time to prevent static generation failures
+    if (process.env.NODE_ENV === 'production' && !LEMONSLICE_API_KEY.startsWith('sk-')) {
+      return NextResponse.json({
+        error: 'Jobs API not configured',
+        message: 'LemonSlice API key not properly configured for production',
+        jobs: []
+      }, { status: 503 })
+    }
+    
+    const { searchParams } = request.nextUrl
     const limit = searchParams.get('limit') || '50'
     const status = searchParams.get('status') // pending, processing, completed, failed
     
