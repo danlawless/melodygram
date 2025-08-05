@@ -289,14 +289,14 @@ export default function MyScreen({ onProfileClick }: MyScreenProps) {
       <div className="bg-black/60 backdrop-blur-xl border-b border-white/10">
         <div className="px-6 py-3">
           {/* Title Section */}
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center">
-                <Video className="w-6 h-6 text-white" />
+          <div className="flex items-center justify-between mb-0">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center">
+                <Video className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-white">Creations</h1>
-                <p className="text-gray-400">Your AI-generated avatar collection</p>
+                <h1 className="text-2xl font-bold text-white">Creations</h1>
+                <p className="text-sm text-gray-400">Your avatar collection</p>
               </div>
             </div>
             
