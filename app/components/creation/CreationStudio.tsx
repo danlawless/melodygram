@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback } from 'react'
-import { Zap, Loader2, Wand2, Music, Upload, User, Play, Clock } from 'lucide-react'
+import { Zap, Loader2, Wand2, Music, Upload, User, Play, Clock, ChevronDown, X } from 'lucide-react'
 import ImageUpload from './ImageUpload'
 import LyricsEditor from './LyricsEditor'
 import SongGeneration from './SongGeneration'
@@ -74,6 +74,23 @@ export default function CreationStudio() {
   // Modal state
   const [showCreditConfirmModal, setShowCreditConfirmModal] = useState(false)
   const [isDryRun, setIsDryRun] = useState(false)
+  const [showPreview, setShowPreview] = useState(false)
+
+  // Prevent background scrolling when modal is open
+  useEffect(() => {
+    if (showCreditConfirmModal) {
+      document.body.style.overflow = 'hidden'
+      console.log('🔒 Background scrolling disabled (modal open)')
+    } else {
+      document.body.style.overflow = 'unset'
+      console.log('🔓 Background scrolling enabled (modal closed)')
+    }
+
+    // Cleanup on unmount
+    return () => {
+      document.body.style.overflow = 'unset'
+    }
+  }, [showCreditConfirmModal])
 
   // Session storage key
   const SESSION_KEY = 'melodygram_creation_session'
@@ -1149,8 +1166,9 @@ export default function CreationStudio() {
 
       {/* Credit Confirmation Modal */}
       {showCreditConfirmModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 max-w-md w-full shadow-2xl">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 overflow-y-auto">
+          <div className="min-h-full flex items-center justify-center p-4">
+            <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 w-full max-w-4xl shadow-2xl my-8">
             <div className="text-center space-y-4">
               {/* Header */}
               <div className="flex items-center justify-center space-x-2 mb-4">
@@ -1289,22 +1307,41 @@ export default function CreationStudio() {
                 </label>
               </div>
 
-              {/* Dry Run Preview */}
+              {/* Expandable Preview Section */}
               {isDryRun && (
-                <MelodyGramPreview
-                  uploadedImage={uploadedImage}
-                  generatedImageUrl={generatedImageUrl}
-                  songTitle={songTitle}
-                  lyrics={lyrics}
-                  generatedSongUrl={generatedSongUrl}
-                  audioSelection={
-                    songHistory && songHistory.length > 0 && songHistory[currentSongIndex] 
-                      ? songHistory[currentSongIndex].audioSelection 
-                      : null
-                  }
-                  selectedVocal={selectedVocal}
-                  songLength={songLength}
-                />
+                <div className="space-y-3">
+                  {/* Toggle Preview Button */}
+                  <button
+                    onClick={() => setShowPreview(!showPreview)}
+                    className="w-full flex items-center justify-center space-x-2 py-2 text-gray-400 hover:text-white transition-colors"
+                  >
+                    <ChevronDown 
+                      className={`w-4 h-4 transition-transform duration-200 ${showPreview ? 'rotate-180' : ''}`} 
+                    />
+                    <span className="text-sm font-medium">Preview</span>
+                  </button>
+
+                  {/* Collapsible Preview Content */}
+                  {showPreview && (
+                    <div className="animate-in slide-in-from-top-5 duration-300">
+                      <MelodyGramPreview
+                        uploadedImage={uploadedImage}
+                        generatedImageUrl={generatedImageUrl}
+                        songTitle={songTitle}
+                        lyrics={lyrics}
+                        generatedSongUrl={generatedSongUrl}
+                        audioSelection={
+                          songHistory && songHistory.length > 0 && songHistory[currentSongIndex] 
+                            ? songHistory[currentSongIndex].audioSelection 
+                            : null
+                        }
+                        selectedVocal={selectedVocal}
+                        songLength={songLength}
+                        onClose={() => setShowPreview(false)}
+                      />
+                    </div>
+                  )}
+                </div>
               )}
 
               {/* Action Buttons */}
@@ -1367,6 +1404,7 @@ export default function CreationStudio() {
               </div>
             </div>
           </div>
+        </div>
         </div>
       )}
     </div>

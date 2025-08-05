@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Play, Pause, Volume2, Image as ImageIcon } from 'lucide-react'
+import { Play, Pause, Volume2, Image as ImageIcon, X } from 'lucide-react'
 import { useGlobalAudioManager } from '../../services/audioManager'
 
 interface MelodyGramPreviewProps {
@@ -22,6 +22,9 @@ interface MelodyGramPreviewProps {
   // Metadata
   selectedVocal: string
   songLength: number
+  
+  // Close handler
+  onClose?: () => void
 }
 
 export default function MelodyGramPreview({
@@ -32,7 +35,8 @@ export default function MelodyGramPreview({
   generatedSongUrl,
   audioSelection,
   selectedVocal,
-  songLength
+  songLength,
+  onClose
 }: MelodyGramPreviewProps) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null)
@@ -213,12 +217,23 @@ export default function MelodyGramPreview({
   return (
     <div className="bg-gradient-to-br from-purple-900/20 to-blue-900/20 border border-purple-500/30 rounded-xl p-4 space-y-4">
       {/* Header */}
-      <div className="flex items-center space-x-2">
-        <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-        <h3 className="text-lg font-semibold text-white">🧪 MelodyGram Preview</h3>
-        <span className="text-xs text-green-400 bg-green-400/10 px-2 py-1 rounded-full">
-          DRY RUN
-        </span>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+          <h3 className="text-lg font-semibold text-white">🧪 MelodyGram Preview</h3>
+          <span className="text-xs text-green-400 bg-green-400/10 px-2 py-1 rounded-full">
+            DRY RUN
+          </span>
+        </div>
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white transition-colors p-1 hover:bg-gray-700/50 rounded"
+            title="Close preview"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
