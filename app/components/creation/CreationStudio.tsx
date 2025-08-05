@@ -56,6 +56,13 @@ export default function CreationStudio() {
   const [selectedVocal, setSelectedVocal] = useState<string>('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [generationError, setGenerationError] = useState<string | null>(null)
+  const [fullErrorDetails, setFullErrorDetails] = useState<{
+    message: string
+    stack?: string
+    timestamp: string
+    context?: any
+  } | null>(null)
+  const [showErrorDetails, setShowErrorDetails] = useState(false)
   const [isTitleGenerating, setIsTitleGenerating] = useState(false)
   const [avatarVideoUrl, setAvatarVideoUrl] = useState<string | null>(null)
   const [songLength, setSongLength] = useState<number>(30) // Default song length
@@ -607,6 +614,8 @@ export default function CreationStudio() {
     try {
       setIsGenerating(true)
       setGenerationError(null) // Clear any previous errors
+      setFullErrorDetails(null) // Clear full error details
+      setShowErrorDetails(false) // Reset error details expansion
       
       // Save initial song to storage
       songStorageService.saveSong(newSong)
@@ -922,8 +931,27 @@ export default function CreationStudio() {
         progress: 0
       })
       
-      // Show error to user in UI instead of popup
+      // Capture full error details for debugging
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      const fullError = {
+        message: errorMessage,
+        stack: error instanceof Error ? error.stack : undefined,
+        timestamp: new Date().toISOString(),
+        context: {
+          lyrics: lyrics?.substring(0, 100) + (lyrics?.length > 100 ? '...' : ''),
+          selectedVocal,
+          songLength,
+          hasUploadedImage: !!uploadedImage,
+          hasGeneratedImage: !!generatedImageUrl
+        }
+      }
+      
+      setFullErrorDetails(fullError)
+      
+      // Log full error to debug system
+      console.error('🚨 Full generation error details:', fullError)
+      
+      // Show user-friendly error message
       if (errorMessage.includes('Too many consecutive API failures')) {
         setGenerationError('Unable to generate song right now. Please try again in a few minutes.')
       } else if (errorMessage.includes('timed out')) {
@@ -1156,7 +1184,75 @@ export default function CreationStudio() {
           {/* Error Message */}
           {generationError && (
             <div className="mb-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-              <p className="text-red-600 dark:text-red-400 text-sm">{generationError}</p>
+              <div className="flex items-start justify-between">
+                <p className="text-red-600 dark:text-red-400 text-sm flex-1">{generationError}</p>
+                {fullErrorDetails && (
+                  <button
+                    onClick={() => setShowErrorDetails(!showErrorDetails)}
+                    className="ml-3 text-xs text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 underline flex-shrink-0 transition-colors"
+                    title="Click to see full error details"
+                  >
+                    {showErrorDetails ? 'Hide Details' : 'Show Details'}
+                  </button>
+                )}
+              </div>
+              
+              {/* Full Error Details (Expandable) */}
+              {showErrorDetails && fullErrorDetails && (
+                <div className="mt-3 pt-3 border-t border-red-200 dark:border-red-800">
+                  <div className="space-y-2 text-xs">
+                    <div>
+                      <strong className="text-red-600 dark:text-red-400">Timestamp:</strong>
+                      <span className="ml-2 font-mono text-gray-600 dark:text-gray-400">
+                        {new Date(fullErrorDetails.timestamp).toLocaleString()}
+                      </span>
+                    </div>
+                    
+                    <div>
+                      <strong className="text-red-600 dark:text-red-400">Error Message:</strong>
+                      <pre className="ml-2 mt-1 bg-red-100 dark:bg-red-900/30 p-2 rounded text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-mono text-xs overflow-x-auto">
+{fullErrorDetails.message}
+                      </pre>
+                    </div>
+                    
+                    {fullErrorDetails.context && (
+                      <div>
+                        <strong className="text-red-600 dark:text-red-400">Context:</strong>
+                        <pre className="ml-2 mt-1 bg-red-100 dark:bg-red-900/30 p-2 rounded text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-mono text-xs overflow-x-auto">
+{JSON.stringify(fullErrorDetails.context, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+                    
+                    {fullErrorDetails.stack && (
+                      <div>
+                        <strong className="text-red-600 dark:text-red-400">Stack Trace:</strong>
+                        <pre className="ml-2 mt-1 bg-red-100 dark:bg-red-900/30 p-2 rounded text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-mono text-xs overflow-x-auto max-h-40 overflow-y-auto">
+{fullErrorDetails.stack}
+                        </pre>
+                      </div>
+                    )}
+                    
+                    <div className="flex space-x-2 pt-2">
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(JSON.stringify(fullErrorDetails, null, 2))
+                          // Could add a toast notification here
+                        }}
+                        className="px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition-colors"
+                      >
+                        Copy Error
+                      </button>
+                      <button
+                        onClick={() => setShowDebugModal(true)}
+                        className="px-2 py-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700 transition-colors"
+                      >
+                        Open Debug Console
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

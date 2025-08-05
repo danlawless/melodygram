@@ -271,6 +271,13 @@ export default function SongGeneration({
 }: SongGenerationProps) {
   const [isGenerating, setIsGenerating] = useState(false)
   const [generationError, setGenerationError] = useState<string | null>(null)
+  const [fullErrorDetails, setFullErrorDetails] = useState<{
+    message: string
+    stack?: string
+    timestamp: string
+    context?: any
+  } | null>(null)
+  const [showErrorDetails, setShowErrorDetails] = useState(false)
   const [generatedSong, setGeneratedSong] = useState<GeneratedSong | null>(null)
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -601,6 +608,8 @@ export default function SongGeneration({
     try {
       setIsGenerating(true)
       setGenerationError(null)
+      setFullErrorDetails(null) // Clear full error details
+      setShowErrorDetails(false) // Reset error details expansion
       setGenerationStatus('Starting song generation...')
       
       if (onGenerationStateChange) {
@@ -856,7 +865,27 @@ export default function SongGeneration({
       }
     } catch (error) {
       console.error('Song generation failed:', error)
-      setGenerationError(error instanceof Error ? error.message : 'Failed to generate song')
+      
+      // Capture full error details for debugging
+      const errorMessage = error instanceof Error ? error.message : 'Failed to generate song'
+      const fullError = {
+        message: errorMessage,
+        stack: error instanceof Error ? error.stack : undefined,
+        timestamp: new Date().toISOString(),
+        context: {
+          lyrics: lyrics?.substring(0, 100) + (lyrics?.length > 100 ? '...' : ''),
+          songTitle: songTitle?.substring(0, 50) + (songTitle?.length > 50 ? '...' : ''),
+          selectedVocal,
+          songLength,
+          hasGeneratedSong: !!generatedSong,
+          generationHistoryCount: generationHistory.length
+        }
+      }
+      
+      setFullErrorDetails(fullError)
+      console.error('🚨 Full song generation error details:', fullError)
+      
+      setGenerationError(errorMessage)
       setGenerationStatus('')
     } finally {
       setIsGenerating(false)
@@ -1354,7 +1383,68 @@ export default function SongGeneration({
       {/* Error Message */}
       {generationError && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-          <p className="text-red-600 dark:text-red-400 text-sm">{generationError}</p>
+          <div className="flex items-start justify-between">
+            <p className="text-red-600 dark:text-red-400 text-sm flex-1">{generationError}</p>
+            {fullErrorDetails && (
+              <button
+                onClick={() => setShowErrorDetails(!showErrorDetails)}
+                className="ml-3 text-xs text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 underline flex-shrink-0 transition-colors"
+                title="Click to see full error details"
+              >
+                {showErrorDetails ? 'Hide Details' : 'Show Details'}
+              </button>
+            )}
+          </div>
+          
+          {/* Full Error Details (Expandable) */}
+          {showErrorDetails && fullErrorDetails && (
+            <div className="mt-3 pt-3 border-t border-red-200 dark:border-red-800">
+              <div className="space-y-2 text-xs">
+                <div>
+                  <strong className="text-red-600 dark:text-red-400">Timestamp:</strong>
+                  <span className="ml-2 font-mono text-gray-600 dark:text-gray-400">
+                    {new Date(fullErrorDetails.timestamp).toLocaleString()}
+                  </span>
+                </div>
+                
+                <div>
+                  <strong className="text-red-600 dark:text-red-400">Error Message:</strong>
+                  <pre className="ml-2 mt-1 bg-red-100 dark:bg-red-900/30 p-2 rounded text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-mono text-xs overflow-x-auto">
+{fullErrorDetails.message}
+                  </pre>
+                </div>
+                
+                {fullErrorDetails.context && (
+                  <div>
+                    <strong className="text-red-600 dark:text-red-400">Context:</strong>
+                    <pre className="ml-2 mt-1 bg-red-100 dark:bg-red-900/30 p-2 rounded text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-mono text-xs overflow-x-auto">
+{JSON.stringify(fullErrorDetails.context, null, 2)}
+                    </pre>
+                  </div>
+                )}
+                
+                {fullErrorDetails.stack && (
+                  <div>
+                    <strong className="text-red-600 dark:text-red-400">Stack Trace:</strong>
+                    <pre className="ml-2 mt-1 bg-red-100 dark:bg-red-900/30 p-2 rounded text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-mono text-xs overflow-x-auto max-h-32 overflow-y-auto">
+{fullErrorDetails.stack}
+                    </pre>
+                  </div>
+                )}
+                
+                <div className="pt-2">
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(JSON.stringify(fullErrorDetails, null, 2))
+                    }}
+                    className="px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition-colors"
+                  >
+                    Copy Error Details
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
