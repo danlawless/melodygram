@@ -659,50 +659,41 @@ export default function CreationStudio() {
           console.log('🔀 Selection:', currentSong.audioSelection)
           console.log('🔀 From audio URL:', audioUrl.substring(0, 50) + '...')
           
-          // Check if we can create externally accessible URLs
-          const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-          // Only client-side accessible env vars work here
-          const hasExternalUrl = process.env.NEXT_PUBLIC_BASE_URL
+          // 🚨 CRITICAL: ALWAYS clip audio - NEVER send full audio to LemonSlice!
+          console.log('🔀 🎯 MANDATORY AUDIO CLIPPING: Creating clipped version...')
+          console.log('🔀 This is NON-NEGOTIABLE to prevent expensive full-audio LemonSlice calls')
           
-          if (isLocalhost && !hasExternalUrl) {
-            console.log('🌍 Local development without external URL detected')
-            console.log('🔀 Skipping audio clipping - using original Mureka URL for LemonSlice compatibility')
-            console.log('💡 To enable audio clipping in local dev, set NEXT_PUBLIC_BASE_URL with your ngrok URL')
-            // Use original external URL that LemonSlice can access
-            finalAudioUrl = audioUrl
-          } else {
-            try {
-              const { createClippedAudio } = await import('./SongGeneration')
-              const clippedAudioUrl = await createClippedAudio(audioUrl, currentSong.audioSelection)
-              if (clippedAudioUrl) {
-                // Check if the clipped URL is accessible externally
-                if (clippedAudioUrl.includes('localhost') && !hasExternalUrl) {
-                  console.log('⚠️ Clipped audio URL is localhost but no external URL configured')
-                  console.log('🔀 Falling back to original Mureka URL for LemonSlice compatibility')
-                  finalAudioUrl = audioUrl
-                } else {
-                  finalAudioUrl = clippedAudioUrl
-                  console.log('✅ 🎉 SUCCESSFULLY created clipped audio for MelodyGram:', clippedAudioUrl.substring(0, 50) + '...')
-                  console.log('🎵 Clipped duration:', currentSong.audioSelection.duration, 'seconds')
-                  console.log('🎵 Original vs clipped:', (currentSong.originalDuration || 'unknown'), 's →', currentSong.audioSelection.duration, 's')
-                }
-              } else {
-                console.error('❌ createClippedAudio returned null - using original audio')
-                finalAudioUrl = audioUrl
-              }
-            } catch (error) {
-              console.error('❌ Could not create clipped audio, using full audio:', error)
-              finalAudioUrl = audioUrl
+          try {
+            const { createClippedAudio } = await import('./SongGeneration')
+            const clippedAudioUrl = await createClippedAudio(audioUrl, currentSong.audioSelection)
+            
+            if (clippedAudioUrl) {
+              finalAudioUrl = clippedAudioUrl
+              console.log('✅ 🎉 SUCCESSFULLY created clipped audio for MelodyGram:', clippedAudioUrl.substring(0, 50) + '...')
+              console.log('🎵 Clipped duration:', currentSong.audioSelection.duration, 'seconds')
+              console.log('🎵 Original vs clipped:', (currentSong.originalDuration || 'unknown'), 's →', currentSong.audioSelection.duration, 's')
+              console.log('💰 Cost savings: Using', currentSong.audioSelection.duration, 'sec instead of full', (currentSong.originalDuration || 'unknown'), 'sec')
+            } else {
+              console.error('❌ 🚨 CRITICAL: createClippedAudio returned null - THIS SHOULD NEVER HAPPEN!')
+              throw new Error('Audio clipping failed - cannot proceed with full audio')
             }
+          } catch (error) {
+            console.error('❌ 🚨 CRITICAL ERROR: Audio clipping failed:', error)
+            console.error('🚨 Cannot send full audio to LemonSlice - this would be expensive!')
+            throw new Error(`Audio clipping failed: ${error.message}. Full audio cannot be sent to LemonSlice.`)
           }
         } else {
-          console.log('❌ Missing audio selection data:')
-          console.log('   - Has audioSelection:', !!currentSong?.audioSelection)
-          console.log('   - Has audioUrl:', !!audioUrl)
-          console.log('🎵 Using full song for MelodyGram (THIS IS EXPENSIVE!)')
+          console.error('❌ 🚨 CRITICAL: Missing audio selection data!')
+          console.error('   - Has audioSelection:', !!currentSong?.audioSelection)
+          console.error('   - Has audioUrl:', !!audioUrl)
+          console.error('🚨 CANNOT proceed without audio selection - would send full audio to LemonSlice!')
+          
+          throw new Error('Audio selection required. Cannot send full audio to LemonSlice - this would be expensive and is prohibited.')
         }
       } else {
-        console.log('❌ No songHistory found - using full song for MelodyGram (THIS IS EXPENSIVE!)')
+        console.error('❌ 🚨 CRITICAL: No songHistory found!')
+        console.error('🚨 Cannot proceed without song history and audio selection')
+        throw new Error('Song history required for audio clipping. Cannot send full audio to LemonSlice.')
       }
       console.log('🎵 Final audio URL for MelodyGram:', finalAudioUrl)
       
