@@ -219,11 +219,8 @@ export default function MelodyGramPreview({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
-          <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-          <h3 className="text-lg font-semibold text-white">🧪 MelodyGram Preview</h3>
-          <span className="text-xs text-green-400 bg-green-400/10 px-2 py-1 rounded-full">
-            DRY RUN
-          </span>
+          <div className="w-3 h-3 bg-purple-400 rounded-full animate-pulse"></div>
+          <h3 className="text-lg font-semibold text-white">MelodyGram Preview</h3>
         </div>
         {onClose && (
           <button

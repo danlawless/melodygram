@@ -73,7 +73,6 @@ export default function CreationStudio() {
   
   // Modal state
   const [showCreditConfirmModal, setShowCreditConfirmModal] = useState(false)
-  const [isDryRun, setIsDryRun] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
 
   // Prevent background scrolling when modal is open
@@ -1289,27 +1288,8 @@ export default function CreationStudio() {
                 return null
               })()}
 
-              {/* Dry Run Option */}
-              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
-                <label className="flex items-center space-x-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={isDryRun}
-                    onChange={(e) => setIsDryRun(e.target.checked)}
-                    className="w-4 h-4 text-yellow-600 bg-gray-100 border-gray-300 rounded focus:ring-yellow-500 focus:ring-2"
-                  />
-                  <div>
-                    <span className="text-sm font-medium text-yellow-400">🧪 Dry Run Mode</span>
-                    <p className="text-xs text-yellow-300 mt-1">
-                      Test audio clipping without sending to LemonSlice (no cost). Perfect for verifying everything works before spending credits.
-                    </p>
-                  </div>
-                </label>
-              </div>
-
               {/* Expandable Preview Section */}
-              {isDryRun && (
-                <div className="space-y-3">
+              <div className="space-y-3">
                   {/* Toggle Preview Button */}
                   <button
                     onClick={() => setShowPreview(!showPreview)}
@@ -1342,7 +1322,6 @@ export default function CreationStudio() {
                     </div>
                   )}
                 </div>
-              )}
 
               {/* Action Buttons */}
               <div className="flex space-x-3 pt-4">
@@ -1353,7 +1332,7 @@ export default function CreationStudio() {
                   Cancel
                 </button>
                 <button
-                  onClick={() => handleGenerateMelodyGram(isDryRun)}
+                  onClick={() => handleGenerateMelodyGram(false)}
                   disabled={(() => {
                     const costCredits = (() => {
                       if (songHistory && songHistory.length > 0) {
@@ -1386,7 +1365,7 @@ export default function CreationStudio() {
                     })()
                   }`}
                 >
-                  {isDryRun ? '🧪 Run Dry Test' : (() => {
+                  {(() => {
                     const costCredits = (() => {
                       if (songHistory && songHistory.length > 0) {
                         const currentSong = songHistory[currentSongIndex]
