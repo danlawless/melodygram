@@ -49,20 +49,11 @@ export const createClippedAudio = async (audioUrl: string, selection: AudioSelec
       }
     }
     
-    // Convert buffer to MP3 blob (fallback to WAV if MP3 fails)
-    let audioBlob: Blob
-    let fileExtension: string
-    
-    try {
-      audioBlob = await audioBufferToMp3Blob(newBuffer)
-      fileExtension = 'mp3'
-      console.log('✅ Created MP3 audio blob')
-    } catch (mp3Error) {
-      console.warn('⚠️ MP3 conversion failed, falling back to WAV:', mp3Error)
-      audioBlob = await audioBufferToWavBlob(newBuffer)
-      fileExtension = 'wav'
-      console.log('✅ Created WAV audio blob as fallback')
-    }
+    // Convert buffer to WAV blob (reliable and works perfectly)
+    console.log('🎵 Converting to WAV format (reliable, no conversion issues)')
+    const audioBlob = await audioBufferToWavBlob(newBuffer)
+    const fileExtension = 'wav'
+    console.log('✅ Created WAV audio blob')
     
     audioContext.close()
     
@@ -74,7 +65,8 @@ export const createClippedAudio = async (audioUrl: string, selection: AudioSelec
       sampleRate: audioBuffer.sampleRate
     })
     
-    // Upload blob to get public URL that LemonSlice can access
+    // Upload blob to get public URL that LemonSlice can access via ngrok
+    console.log('📤 Uploading WAV blob via ngrok for external LemonSlice access...')
     const formData = new FormData()
     formData.append('audio', audioBlob, `clipped.${fileExtension}`)
     
