@@ -326,28 +326,35 @@ class MurekaApiService {
   /**
    * Generate a song using Mureka API with proper lyrics/prompt separation
    */
-  async generateSong(params: {
-    lyrics: string
-    prompt?: string
-    model?: string
-  }) {
+  async generateSong(params: SongGenerationParams & { lyrics: string }) {
     try {
       // Wait for rate limiter
       await murekaRateLimiter.waitForTurn()
       
       console.log(`🎵 Starting Mureka song generation`)
       console.log(`🎵 Lyrics (${params.lyrics.length} chars):`, params.lyrics.substring(0, 100) + '...')
-      console.log(`🎵 Prompt:`, params.prompt)
+      console.log(`🎵 Title:`, params.title)
+      console.log(`🎵 Style:`, params.style)
+      console.log(`🎵 Mood:`, params.mood)
 
       const requestBody: any = {
-        lyrics: params.lyrics, // Pure lyrics only
-        model: params.model || 'auto'
+        lyrics: params.lyrics // Pure lyrics only
       }
 
-      // Add prompt if provided
-      if (params.prompt) {
-        requestBody.prompt = params.prompt
+      // Build prompt from style, mood, genre, etc.
+      const promptParts: string[] = []
+      if (params.style) promptParts.push(params.style)
+      if (params.mood) promptParts.push(params.mood)
+      if (params.genre) promptParts.push(params.genre)
+      
+      if (promptParts.length > 0) {
+        requestBody.prompt = promptParts.join(', ')
       }
+
+      // Add other optional parameters
+      if (params.title) requestBody.title = params.title
+      if (params.referenceTrack) requestBody.reference_track = params.referenceTrack
+      if (params.duration) requestBody.duration = params.duration
 
       const response = await murekaApi.post('/v1/song/generate', requestBody)
       

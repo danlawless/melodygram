@@ -6,8 +6,13 @@ const openai = new OpenAI({
 })
 
 export async function POST(request: NextRequest) {
+  let gender, style, mood
+  
   try {
-    const { gender, style, mood } = await request.json()
+    const requestData = await request.json()
+    gender = requestData.gender
+    style = requestData.style
+    mood = requestData.mood
 
     // Create a prompt for GPT-4o-mini to generate creative avatar descriptions
     const systemPrompt = `You are a creative AI avatar prompt generator. Generate imaginative, diverse, and appealing waist-up descriptions for DALL-E 3 avatar generation.

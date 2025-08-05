@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { lemonSliceApiService, AvatarCreationRequest, AvatarTaskStatus, AvatarPreset } from '../services/lemonSliceApi'
+import { lemonSliceApiService, CreateAvatarRequest, AvatarTaskStatus, AvatarPreset } from '../services/lemonSliceApi'
 
 interface UseLemonSliceAPIReturn {
   // State
@@ -11,8 +11,8 @@ interface UseLemonSliceAPIReturn {
   presets: AvatarPreset[]
   
   // Actions
-  createAvatar: (request: AvatarCreationRequest) => Promise<string | null>
-  createAvatarFromFiles: (imageFile: File, audioUrl: string, options?: Partial<AvatarCreationRequest>) => Promise<string | null>
+  createAvatar: (request: CreateAvatarRequest) => Promise<string | null>
+  createAvatarFromFiles: (imageFile: File, audioUrl: string, options?: Partial<CreateAvatarRequest>) => Promise<string | null>
   checkTaskStatus: (taskId: string) => Promise<AvatarTaskStatus | null>
   loadPresets: () => Promise<void>
   clearError: () => void
@@ -49,7 +49,7 @@ export function useLemonSliceAPI(): UseLemonSliceAPIReturn {
     }
   }, [])
 
-  const createAvatar = useCallback(async (request: AvatarCreationRequest): Promise<string | null> => {
+  const createAvatar = useCallback(async (request: CreateAvatarRequest): Promise<string | null> => {
     try {
       setIsCreating(true)
       setProgress(0)
@@ -58,19 +58,13 @@ export function useLemonSliceAPI(): UseLemonSliceAPIReturn {
 
       // Start avatar creation
       const response = await lemonSliceApiService.createAvatar(request)
-      setCurrentTask(response.task_id)
+      setCurrentTask(response.job_id)
 
-      // If already completed (unlikely but possible)
-      if (response.status === 'completed' && response.video_url) {
-        setAvatarUrl(response.video_url)
-        setProgress(100)
-        setIsCreating(false)
-        return response.video_url
-      }
+      // Note: Initial response won't have video_url, need to poll for completion
 
       // Wait for completion with progress updates
       const result = await lemonSliceApiService.waitForCompletion(
-        response.task_id,
+        response.job_id,
         (progressValue, status) => {
           setProgress(progressValue)
           console.log(`Avatar creation progress: ${progressValue}% (${status})`)
@@ -98,7 +92,7 @@ export function useLemonSliceAPI(): UseLemonSliceAPIReturn {
   const createAvatarFromFiles = useCallback(async (
     imageFile: File, 
     audioUrl: string, 
-    options?: Partial<AvatarCreationRequest>
+    options?: Partial<CreateAvatarRequest>
   ): Promise<string | null> => {
     try {
       setIsCreating(true)
@@ -113,19 +107,13 @@ export function useLemonSliceAPI(): UseLemonSliceAPIReturn {
         options
       )
       
-      setCurrentTask(response.task_id)
+      setCurrentTask(response.job_id)
 
-      // If already completed (unlikely but possible)
-      if (response.status === 'completed' && response.video_url) {
-        setAvatarUrl(response.video_url)
-        setProgress(100)
-        setIsCreating(false)
-        return response.video_url
-      }
+      // Note: Initial response won't have video_url, need to poll for completion
 
       // Wait for completion with progress updates
       const result = await lemonSliceApiService.waitForCompletion(
-        response.task_id,
+        response.job_id,
         (progressValue, status) => {
           setProgress(progressValue)
           console.log(`Avatar creation progress: ${progressValue}% (${status})`)

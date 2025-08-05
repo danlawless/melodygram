@@ -77,11 +77,11 @@ export default function AvatarGeneration({
       const prompt = generatePrompt(selectedGender)
       
       await createAvatarFromFiles(imageFile, generatedAudioUrl, {
-        animation: selectedPreset as 'natural' | 'expressive' | 'subtle',
-        background: selectedBackground,
-        quality: selectedQuality,
-        language: 'en', // You can make this dynamic based on your song language
-        ...(prompt && { prompt })
+        animation_style: selectedPreset as 'autoselect' | 'face_only' | 'entire_image',
+        resolution: selectedQuality as '256' | '320' | '512',
+        expressiveness: 0.7, // Default expressiveness
+        title: 'Generated Avatar',
+        ...(prompt && { title: prompt })
       })
     } catch (err) {
       console.error('Failed to create avatar:', err)
