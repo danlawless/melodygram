@@ -345,20 +345,7 @@ export default function MelodyGramPreview({
         </div>
       </div>
 
-      {/* Mobile Test Instructions */}
-      <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
-        <p className="text-sm text-blue-400">
-          📱 <strong>Mobile Test:</strong> Tap the play button above to test audio playback on your device. 
-          Verify the image displays correctly and audio plays the selected segment only.
-        </p>
-      </div>
 
-      {/* Warning */}
-      <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
-        <p className="text-sm text-yellow-400">
-          🧪 <strong>Dry Run Mode:</strong> This is a preview only. No credits will be charged and no MelodyGram will be created until you proceed with the actual generation.
-        </p>
-      </div>
     </div>
   )
 }

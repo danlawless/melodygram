@@ -1166,8 +1166,8 @@ export default function CreationStudio() {
       {/* Credit Confirmation Modal */}
       {showCreditConfirmModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 overflow-y-auto">
-          <div className="min-h-full flex items-center justify-center p-4">
-            <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 w-full max-w-4xl shadow-2xl my-8">
+          <div className="min-h-screen flex items-start justify-center p-4 py-8">
+            <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 w-full max-w-4xl shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="text-center space-y-4">
               {/* Header */}
               <div className="flex items-center justify-center space-x-2 mb-4">
