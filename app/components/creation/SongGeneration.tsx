@@ -6,6 +6,7 @@ import { murekaApiService } from '../../services/murekaApi'
 import { songStorageService, type AudioSelection } from '../../services/songStorage'
 import { getCreditsForLength } from '../../services/creditSystem'
 import { useAudioGenderAnalysis } from '../../hooks/useAudioGenderAnalysis'
+import { useGlobalAudioManager } from '../../services/audioManager'
 
 // Helper function to create clipped audio from a selection (Browser + Upload)
 export const createClippedAudio = async (audioUrl: string, selection: AudioSelection): Promise<string | null> => {
@@ -284,6 +285,28 @@ export default function SongGeneration({
 
   // Audio gender analysis hook
   const { analyzeAudioGender, isAnalyzing: isAnalyzingGender, result: genderAnalysisResult } = useAudioGenderAnalysis()
+
+  // Global audio manager integration
+  const audioManager = useGlobalAudioManager('song-generation', 'MelodyGram Player')
+
+  // Register/unregister with global audio manager
+  useEffect(() => {
+    const stopCallback = () => {
+      console.log('🎵 🛑 MelodyGram Player: Stopped by global audio manager')
+      forceStopAudio()
+    }
+
+    audioManager.registerPlayer(audioElement, stopCallback)
+    
+    return () => {
+      audioManager.unregisterPlayer()
+    }
+  }, [audioElement])
+
+  // Update audio element reference in manager when it changes
+  useEffect(() => {
+    audioManager.updateElement(audioElement)
+  }, [audioElement])
 
   // Cleanup function for audio element
   const cleanupAudioElement = (audio: HTMLAudioElement) => {
@@ -849,9 +872,12 @@ export default function SongGeneration({
         // Pause current audio with force stop for mobile compatibility
         console.log('🎵 Pausing audio...')
         forceStopAudio()
+        audioManager.stopPlaying()
         console.log('🎵 Audio paused - isPlaying set to false')
         return
       } else {
+        // Notify global audio manager that we're starting playback
+        audioManager.startPlaying()
         // Play or resume audio
         let audio = audioElement
 

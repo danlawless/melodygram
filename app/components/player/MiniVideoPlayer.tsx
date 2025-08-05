@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react'
 import { Play, Pause, Volume2, VolumeX, Maximize, X } from 'lucide-react'
+import { useGlobalAudioManager } from '../../services/audioManager'
 
 interface MiniVideoPlayerProps {
   isVisible: boolean
@@ -26,6 +27,31 @@ export default function MiniVideoPlayer({
   const [duration, setDuration] = useState(0)
   const [volume, setVolume] = useState(1)
   const [isMuted, setIsMuted] = useState(false)
+
+  // Global audio manager integration
+  const audioManager = useGlobalAudioManager(`mini-video-player-${jobId}`, 'Mini Video Player')
+
+  // Register/unregister with global audio manager
+  useEffect(() => {
+    const stopCallback = () => {
+      console.log('🎵 🛑 Mini Video Player: Stopped by global audio manager')
+      if (videoRef.current && !videoRef.current.paused) {
+        videoRef.current.pause()
+      }
+      setIsPlaying(false)
+    }
+
+    audioManager.registerPlayer(videoRef.current, stopCallback)
+    
+    return () => {
+      audioManager.unregisterPlayer()
+    }
+  }, [videoRef.current, jobId])
+
+  // Update video element reference in manager when it changes
+  useEffect(() => {
+    audioManager.updateElement(videoRef.current)
+  }, [videoRef.current])
 
   // Video event handlers
   useEffect(() => {
@@ -65,7 +91,10 @@ export default function MiniVideoPlayer({
 
     if (isPlaying) {
       video.pause()
+      audioManager.stopPlaying()
     } else {
+      // Notify global audio manager that we're starting playback
+      audioManager.startPlaying()
       video.play()
     }
   }

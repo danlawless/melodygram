@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { Play, Pause, Music, Image as ImageIcon, User, Clock, Mic, ChevronLeft, ChevronRight, Volume2 } from 'lucide-react'
+import { useGlobalAudioManager } from '../../services/audioManager'
 
 interface FinalPreviewProps {
   // Image data
@@ -69,6 +70,31 @@ export default function FinalPreview({
   const [duration, setDuration] = useState(0)
   const [currentAudioSelection, setCurrentAudioSelection] = useState<typeof audioSelection>(null)
 
+  // Global audio manager integration
+  const audioManager = useGlobalAudioManager('final-preview', 'Final Preview')
+
+  // Register/unregister with global audio manager
+  useEffect(() => {
+    const stopCallback = () => {
+      console.log('🎵 🛑 Final Preview: Stopped by global audio manager')
+      if (audioElement && !audioElement.paused) {
+        audioElement.pause()
+      }
+      setIsPlaying(false)
+    }
+
+    audioManager.registerPlayer(audioElement, stopCallback)
+    
+    return () => {
+      audioManager.unregisterPlayer()
+    }
+  }, [audioElement])
+
+  // Update audio element reference in manager when it changes
+  useEffect(() => {
+    audioManager.updateElement(audioElement)
+  }, [audioElement])
+
   // Get the image URL to display
   const imageUrl = uploadedImageUrl || generatedImageUrl
 
@@ -122,7 +148,10 @@ export default function FinalPreview({
         audioElement.pause()
         audioElement.volume = 1.0
         setIsPlaying(false)
+        audioManager.stopPlaying()
       } else {
+        // Notify global audio manager that we're starting playback
+        audioManager.startPlaying()
         // Play or resume audio
         let audio = audioElement
 

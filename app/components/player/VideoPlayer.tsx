@@ -15,6 +15,7 @@ import {
   Share2,
   MoreHorizontal
 } from 'lucide-react'
+import { useGlobalAudioManager } from '../../services/audioManager'
 
 interface VideoPlayerProps {
   isOpen: boolean
@@ -49,6 +50,31 @@ export default function VideoPlayer({
   const [loadingError, setLoadingError] = useState<string | null>(null)
   const [loadingProgress, setLoadingProgress] = useState(0)
   const [controlsTimeout, setControlsTimeout] = useState<NodeJS.Timeout | null>(null)
+
+  // Global audio manager integration
+  const audioManager = useGlobalAudioManager(`video-player-${jobId}`, 'Video Player')
+
+  // Register/unregister with global audio manager
+  useEffect(() => {
+    const stopCallback = () => {
+      console.log('🎵 🛑 Video Player: Stopped by global audio manager')
+      if (videoRef.current && !videoRef.current.paused) {
+        videoRef.current.pause()
+      }
+      setIsPlaying(false)
+    }
+
+    audioManager.registerPlayer(videoRef.current, stopCallback)
+    
+    return () => {
+      audioManager.unregisterPlayer()
+    }
+  }, [videoRef.current, jobId])
+
+  // Update video element reference in manager when it changes
+  useEffect(() => {
+    audioManager.updateElement(videoRef.current)
+  }, [videoRef.current])
 
   // Auto-hide controls after inactivity, but always show on hover
   useEffect(() => {
@@ -168,7 +194,10 @@ export default function VideoPlayer({
 
     if (isPlaying) {
       video.pause()
+      audioManager.stopPlaying()
     } else {
+      // Notify global audio manager that we're starting playback
+      audioManager.startPlaying()
       video.play()
     }
   }
