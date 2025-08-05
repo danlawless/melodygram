@@ -347,6 +347,13 @@ export default function ImageUpload({ uploadedImage, onImageUpload, onImageGener
     if (generatedImageUrl) {
       setPreview(generatedImageUrl)
       console.log('🎨 ImageUpload: Set preview from generatedImageUrl prop')
+      
+      // Check if this URL exists in avatar history and set as current
+      const existingAvatar = avatarHistory.find(avatar => avatar.imageUrl === generatedImageUrl)
+      if (existingAvatar && currentAvatar?.id !== existingAvatar.id) {
+        setCurrentAvatar(existingAvatar)
+        console.log('🎭 Found matching avatar in history, restored as current:', existingAvatar.id)
+      }
     } else if (uploadedImage) {
       const reader = new FileReader()
       reader.onload = (e) => {
@@ -356,8 +363,9 @@ export default function ImageUpload({ uploadedImage, onImageUpload, onImageGener
       reader.readAsDataURL(uploadedImage)
     } else {
       setPreview(null)
+      setCurrentAvatar(null)
     }
-  }, [uploadedImage, generatedImageUrl])
+  }, [uploadedImage, generatedImageUrl, avatarHistory, currentAvatar])
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()

@@ -124,6 +124,8 @@ export default function CreationStudio() {
             songLength: session.songLength,
             hasGeneratedImage: !!session.hasGeneratedImage,
             hasUploadedImage: !!session.hasUploadedImage,
+            hasCurrentAvatar: !!session.currentAvatarUrl,
+            avatarIndex: session.currentAvatarIndex,
             storageOptimized: true
           })
           
@@ -156,6 +158,16 @@ export default function CreationStudio() {
             console.log('📸 Found uploaded image in old session format, not restoring to save storage space')
           } else if (session.hasUploadedImage) {
             console.log('📸 Session had uploaded image, but not restored to save storage space')
+          }
+          
+          // Restore the currently selected avatar from avatar history if available
+          if (session.currentAvatarUrl) {
+            console.log('🎭 Attempting to restore selected avatar:', session.currentAvatarUrl.substring(0, 50) + '...')
+            setGeneratedImageUrl(session.currentAvatarUrl)
+            if (session.currentAvatarIndex !== undefined) {
+              setCurrentAvatarIndex(session.currentAvatarIndex)
+            }
+            restored.push('selected-avatar')
           }
           
           if (restored.length > 0) {
@@ -212,6 +224,9 @@ export default function CreationStudio() {
           generatedSongUrl,
           hasUploadedImage: !!uploadedImageUrl,
           uploadedImageName: uploadedImage?.name || null,
+          // Store the currently selected avatar info to restore on page refresh
+          currentAvatarUrl: cleanGeneratedImageUrl || uploadedImageUrl,
+          currentAvatarIndex: currentAvatarIndex,
           lastUpdated: new Date().toISOString()
         }
         
@@ -223,6 +238,8 @@ export default function CreationStudio() {
             hasUploadedImage: !!uploadedImageUrl,
             lyricsCharCount: lyrics?.length || 0,
             titleCharCount: songTitle?.length || 0,
+            currentAvatarSaved: !!session.currentAvatarUrl,
+            avatarIndex: session.currentAvatarIndex,
             storageOptimized: true
           })
         } catch (error) {
@@ -232,7 +249,7 @@ export default function CreationStudio() {
       
       return () => clearTimeout(timeoutId)
     }
-  }, [lyrics, songTitle, selectedVocal, songLength, generatedImageUrl, generatedSongUrl, uploadedImageUrl])
+  }, [lyrics, songTitle, selectedVocal, songLength, generatedImageUrl, generatedSongUrl, uploadedImageUrl, currentAvatarIndex])
 
   // Debug song length changes
   useEffect(() => {
