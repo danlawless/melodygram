@@ -285,11 +285,11 @@ export default function MyScreen({ onProfileClick }: MyScreenProps) {
 
   return (
     <div className="bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900 pb-24">
-      {/* Elegant Header */}
+      {/* Compact Gallery Header */}
       <div className="bg-black/60 backdrop-blur-xl border-b border-white/10">
-        <div className="px-6 py-6">
+        <div className="px-6 py-3">
           {/* Title Section */}
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center">
                 <Video className="w-6 h-6 text-white" />
@@ -328,7 +328,7 @@ export default function MyScreen({ onProfileClick }: MyScreenProps) {
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-3 gap-4 mb-4">
             <div className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 backdrop-blur-sm border border-green-500/30 rounded-2xl p-4 text-center">
               <div className="text-3xl font-bold text-green-400 mb-1">
                 {allJobs.filter(job => job.status === 'completed').length}
@@ -390,7 +390,7 @@ export default function MyScreen({ onProfileClick }: MyScreenProps) {
       </div>
 
       {/* Video Gallery */}
-      <div className="px-6 py-8">
+      <div className="px-6 py-4">
         {loadingJobs && allJobs.length === 0 ? (
           <div className="text-center py-20">
             <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center">
