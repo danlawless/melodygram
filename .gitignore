@@ -29,6 +29,12 @@ tsconfig.tsbuildinfo
 # MCP configuration (contains API keys)
 cursor-mcp-config.json
 
+# Temporary generated files
+public/temp-audio/
+public/temp-avatars/
+test-endpoints.js
+.env.local.backup-*
+
 # Dependencies
 node_modules/
 npm-debug.log*
