@@ -46,6 +46,8 @@ export default function VideoPlayer({
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [showControls, setShowControls] = useState(true)
   const [isLoading, setIsLoading] = useState(true)
+  const [loadingError, setLoadingError] = useState<string | null>(null)
+  const [loadingProgress, setLoadingProgress] = useState(0)
   const [controlsTimeout, setControlsTimeout] = useState<NodeJS.Timeout | null>(null)
 
   // Auto-hide controls after inactivity, but always show on hover
@@ -323,12 +325,98 @@ export default function VideoPlayer({
           className="max-w-full max-h-full rounded-2xl shadow-2xl"
           onClick={togglePlayPause}
           poster="" // Could add a poster image here
+          playsInline
+          preload="metadata"
+          crossOrigin="anonymous"
+          onLoadStart={() => {
+            console.log('📱 Video loading started:', title)
+            setIsLoading(true)
+            setLoadingError(null)
+            setLoadingProgress(0)
+          }}
+          onProgress={(e) => {
+            if (e.currentTarget.buffered.length > 0) {
+              const buffered = e.currentTarget.buffered.end(0)
+              const duration = e.currentTarget.duration
+              if (duration > 0) {
+                const progress = (buffered / duration) * 100
+                setLoadingProgress(progress)
+                console.log('📱 Video loading progress:', progress.toFixed(1) + '%')
+              }
+            }
+          }}
+          onCanPlay={() => {
+            console.log('📱 Video can start playing:', title)
+            setIsLoading(false)
+            setLoadingError(null)
+          }}
+          onError={(e) => {
+            console.error('📱 Video loading error:', e)
+            setIsLoading(false)
+            setLoadingError('Failed to load video. Please check your connection and try again.')
+          }}
+          onStalled={() => {
+            console.warn('📱 Video loading stalled:', title)
+            setLoadingError('Video loading is slow. Please wait...')
+          }}
+          onWaiting={() => {
+            console.log('📱 Video waiting for data:', title)
+            setIsLoading(true)
+          }}
+          onLoadedData={() => {
+            console.log('📱 Video data loaded:', title)
+            setIsLoading(false)
+            setLoadingError(null)
+          }}
         />
 
         {/* Loading Overlay */}
-        {isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-2xl">
-            <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+        {(isLoading || loadingError) && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 rounded-2xl backdrop-blur-sm">
+            {isLoading && !loadingError && (
+              <>
+                <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                <div className="text-white text-center px-4">
+                  <p className="text-lg font-medium mb-2">Loading video...</p>
+                  {loadingProgress > 0 && (
+                    <div className="w-48 bg-gray-600 rounded-full h-2 mb-2">
+                      <div 
+                        className="bg-purple-500 h-2 rounded-full transition-all duration-300" 
+                        style={{ width: `${loadingProgress}%` }}
+                      ></div>
+                    </div>
+                  )}
+                  <p className="text-sm text-gray-300">
+                    {loadingProgress > 0 ? `${loadingProgress.toFixed(1)}% loaded` : 'Please wait...'}
+                  </p>
+                </div>
+              </>
+            )}
+            
+            {loadingError && (
+              <>
+                <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mb-4">
+                  <X className="w-8 h-8 text-red-400" />
+                </div>
+                <div className="text-white text-center px-4 max-w-sm">
+                  <p className="text-lg font-medium mb-2">Video Loading Error</p>
+                  <p className="text-sm text-gray-300 mb-4">{loadingError}</p>
+                  <button
+                    onClick={() => {
+                      console.log('📱 Retrying video load:', title)
+                      setLoadingError(null)
+                      setIsLoading(true)
+                      if (videoRef.current) {
+                        videoRef.current.load()
+                      }
+                    }}
+                    className="px-4 py-2 bg-purple-500 hover:bg-purple-600 rounded-lg text-white font-medium transition-colors"
+                  >
+                    Retry Loading
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         )}
 

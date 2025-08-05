@@ -38,21 +38,60 @@ export default function MyScreen({ onProfileClick }: MyScreenProps) {
   const [showShareModal, setShowShareModal] = useState(false)
   const [currentShareOptions, setCurrentShareOptions] = useState<ShareOptions | null>(null)
 
-  // Load jobs from LemonSlice API
-  const loadJobsFromAPI = async () => {
+  // Load jobs from LemonSlice API with mobile-optimized retry logic
+  const loadJobsFromAPI = async (retryCount = 0) => {
+    const maxRetries = 3
+    const timeout = 10000 // 10 second timeout for mobile
+    
     try {
       setLoadingJobs(true)
-      const response = await fetch('/api/lemonslice/jobs?limit=50')
+      console.log(`📋 Loading jobs from API (attempt ${retryCount + 1}/${maxRetries + 1})...`)
+      
+      // Create abort controller for timeout
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), timeout)
+      
+      const response = await fetch('/api/lemonslice/jobs?limit=50', {
+        signal: controller.signal,
+        headers: {
+          'Cache-Control': 'no-cache',
+        }
+      })
+      
+      clearTimeout(timeoutId)
+      
+      if (!response.ok) {
+        throw new Error(`API response failed: ${response.status} ${response.statusText}`)
+      }
+      
       const data = await response.json()
       
       if (data._success && data.jobs) {
         setAllJobs(data.jobs)
-        console.log('📋 Loaded jobs from API:', data.jobs.length)
+        console.log('📋 ✅ Loaded jobs from API:', data.jobs.length)
+      } else {
+        console.warn('📋 ⚠️ API response missing expected data:', data)
       }
     } catch (error) {
-      console.error('Error loading jobs from API:', error)
+      console.error(`📋 ❌ Error loading jobs from API (attempt ${retryCount + 1}):`, error)
+      
+      // Retry logic for mobile connection issues
+      if (retryCount < maxRetries && (
+        error.name === 'AbortError' || 
+        error.message.includes('fetch') ||
+        error.message.includes('network')
+      )) {
+        console.log(`📋 🔄 Retrying in ${(retryCount + 1) * 2} seconds...`)
+        setTimeout(() => {
+          loadJobsFromAPI(retryCount + 1)
+        }, (retryCount + 1) * 2000) // Progressive delay: 2s, 4s, 6s
+        return // Don't set loading to false yet
+      }
     } finally {
-      setLoadingJobs(false)
+      // Only set loading to false if we're not retrying
+      if (retryCount >= maxRetries || loadingJobs) {
+        setLoadingJobs(false)
+      }
     }
   }
 
@@ -72,11 +111,18 @@ export default function MyScreen({ onProfileClick }: MyScreenProps) {
     loadSongs()
     loadJobsFromAPI() // Also load API jobs
 
-    // Refresh every 10 seconds to catch updates from ongoing generations
+    // Refresh less frequently to avoid overwhelming mobile connections
+    // Use 30 seconds for mobile, 15 seconds for desktop
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
+    const refreshInterval = isMobile ? 30000 : 15000
+    
+    console.log(`📱 Setting refresh interval to ${refreshInterval/1000}s (mobile: ${isMobile})`)
+    
     const interval = setInterval(() => {
+      console.log('🔄 Refreshing jobs and songs...')
       loadSongs()
       loadJobsFromAPI()
-    }, 10000)
+    }, refreshInterval)
     return () => clearInterval(interval)
   }, [])
 
