@@ -26,7 +26,7 @@ export default function AppHeader({ onProfileClick, onSettingsClick }: AppHeader
   }
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 bg-bg-primary border-b border-border-subtle w-full">
+    <div className="bg-bg-primary border-b border-border-subtle w-full">
       <div className="flex items-center justify-between px-4 py-4">
         {/* Logo Section */}
         <div className="flex items-center gap-3">
