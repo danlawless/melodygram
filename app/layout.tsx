@@ -13,6 +13,9 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: 'black',
     title: 'MelodyGram'
+  },
+  other: {
+    'app-version': '1.0.1'
   }
 }
 
@@ -33,6 +36,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        {/* Force PWA cache refresh */}
+        <meta name="version" content="1.0.1" />
+        <meta httpEquiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+        <meta httpEquiv="Pragma" content="no-cache" />
+        <meta httpEquiv="Expires" content="0" />
+      </head>
       <body className={`${inter.className} bg-bg-primary text-text-primary`}>
         <ToastProvider>
           <div className="min-h-screen flex flex-col safe-area-top safe-area-bottom">
