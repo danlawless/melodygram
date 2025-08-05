@@ -6,6 +6,13 @@ import { v4 as uuidv4 } from 'uuid'
 // Force dynamic rendering since we handle file uploads and environment variables
 export const dynamic = 'force-dynamic'
 
+// Add CORS headers for cross-origin requests (ngrok to localhost)
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+}
+
 export async function POST(request: NextRequest) {
   try {
     console.log('📤 Upload audio endpoint called')
@@ -84,11 +91,18 @@ export async function POST(request: NextRequest) {
       }
     }, 60 * 60 * 1000) // 1 hour
     
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       url: publicUrl,
       filename: fileName
     })
+    
+    // Add CORS headers to the response
+    Object.entries(corsHeaders).forEach(([key, value]) => {
+      response.headers.set(key, value)
+    })
+    
+    return response
     
   } catch (error) {
     console.error('❌ Audio upload error:', error)
@@ -101,7 +115,7 @@ export async function POST(request: NextRequest) {
       VERCEL_ENV: process.env.VERCEL_ENV
     })
     
-    return NextResponse.json({
+    const errorResponse = NextResponse.json({
       error: 'Failed to upload audio',
       details: error instanceof Error ? error.message : 'Unknown error',
       errorName: error instanceof Error ? error.name : 'Unknown',
@@ -111,5 +125,26 @@ export async function POST(request: NextRequest) {
         VERCEL_ENV: process.env.VERCEL_ENV
       }
     }, { status: 500 })
+    
+    // Add CORS headers to error response
+    Object.entries(corsHeaders).forEach(([key, value]) => {
+      errorResponse.headers.set(key, value)
+    })
+    
+    return errorResponse
   }
+}
+
+// Handle CORS preflight requests
+export async function OPTIONS() {
+  console.log('📤 CORS preflight request received')
+  
+  const response = new NextResponse(null, { status: 200 })
+  
+  // Add CORS headers to preflight response
+  Object.entries(corsHeaders).forEach(([key, value]) => {
+    response.headers.set(key, value)
+  })
+  
+  return response
 }

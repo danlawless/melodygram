@@ -65,12 +65,21 @@ export const createClippedAudio = async (audioUrl: string, selection: AudioSelec
       sampleRate: audioBuffer.sampleRate
     })
     
-    // Upload blob to get public URL that LemonSlice can access via ngrok
-    console.log('📤 Uploading WAV blob via ngrok for external LemonSlice access...')
+    // Save blob locally via ngrok for direct LemonSlice access
+    console.log('📤 Saving WAV blob locally via ngrok for direct LemonSlice access...')
+    console.log('🌍 This bypasses Vercel entirely - files saved to local ngrok server')
+    
     const formData = new FormData()
     formData.append('audio', audioBlob, `clipped.${fileExtension}`)
     
-    const uploadResponse = await fetch('/api/upload-audio-blob', {
+    // Use ngrok for file storage since LemonSlice needs external access
+    const ngrokUrl = process.env.NEXT_PUBLIC_NGROK_URL || 'https://e9d839e3b493.ngrok-free.app'
+    const uploadEndpoint = `${ngrokUrl}/api/upload-audio-blob`
+    
+    console.log('📤 Using ngrok upload endpoint for external LemonSlice access:', uploadEndpoint)
+    console.log('🎯 This saves files to local ngrok server, immediately accessible to LemonSlice API')
+    console.log('🌍 Ngrok URL from env:', ngrokUrl)
+    const uploadResponse = await fetch(uploadEndpoint, {
       method: 'POST',
       body: formData
     })
