@@ -8,12 +8,11 @@ const LEMONSLICE_API_KEY = process.env.LEMONSLICE_API_KEY || 'sk-1990426d-aff0-4
 
 export async function GET() {
   try {
-    // Skip API calls during build time to prevent static generation failures
-    if (process.env.VERCEL_ENV === 'preview' || process.env.NODE_ENV !== 'development') {
-      // Don't make external API calls during build or in preview environments
+    // Only skip API calls in preview environments (not production!)
+    if (process.env.VERCEL_ENV === 'preview') {
       return NextResponse.json({
         status: 'healthy',
-        message: 'Build-time placeholder response'
+        message: 'Preview environment - API calls disabled'
       }, { status: 200 })
     }
     

@@ -26,13 +26,27 @@ export async function POST(request: NextRequest) {
     const arrayBuffer = await audioFile.arrayBuffer()
     await writeFile(filePath, Buffer.from(arrayBuffer))
     
-    // Return public URL  
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
-                   process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 
-                   'http://localhost:3000'
-    const publicUrl = `${baseUrl}/temp-audio/${fileName}`
+    // Return public URL that LemonSlice API can access
+    let baseUrl: string
     
-    console.log('🌍 Using dynamic base URL for audio access:', publicUrl)
+    // Priority order: Explicit base URL > Vercel URL > ngrok URL > localhost (with warning)
+    if (process.env.NEXT_PUBLIC_BASE_URL) {
+      baseUrl = process.env.NEXT_PUBLIC_BASE_URL
+      console.log('🌍 Using explicit base URL from NEXT_PUBLIC_BASE_URL')
+    } else if (process.env.VERCEL_URL) {
+      baseUrl = `https://${process.env.VERCEL_URL}`
+      console.log('🌍 Using Vercel URL for production')
+    } else if (process.env.NGROK_URL) {
+      baseUrl = process.env.NGROK_URL
+      console.log('🌍 Using ngrok URL for local development')
+    } else {
+      baseUrl = 'http://localhost:3000'
+      console.log('⚠️ WARNING: Using localhost URL - LemonSlice API cannot access this!')
+      console.log('💡 For local development, set NGROK_URL environment variable')
+    }
+    
+    const publicUrl = `${baseUrl}/temp-audio/${fileName}`
+    console.log('🌍 Final audio URL for external access:', publicUrl)
     
     console.log('✅ Uploaded clipped audio:', publicUrl)
     

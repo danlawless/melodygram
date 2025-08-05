@@ -641,19 +641,42 @@ export default function CreationStudio() {
           console.log('🔀 ✅ FOUND audio selection, creating clipped version...')
           console.log('🔀 Selection:', currentSong.audioSelection)
           console.log('🔀 From audio URL:', audioUrl.substring(0, 50) + '...')
-          try {
-            const { createClippedAudio } = await import('./SongGeneration')
-            const clippedAudioUrl = await createClippedAudio(audioUrl, currentSong.audioSelection)
-            if (clippedAudioUrl) {
-              finalAudioUrl = clippedAudioUrl
-              console.log('✅ 🎉 SUCCESSFULLY created clipped audio for MelodyGram:', clippedAudioUrl.substring(0, 50) + '...')
-              console.log('🎵 Clipped duration:', currentSong.audioSelection.duration, 'seconds')
-              console.log('🎵 Original vs clipped:', (currentSong.originalDuration || 'unknown'), 's →', currentSong.audioSelection.duration, 's')
-            } else {
-              console.error('❌ createClippedAudio returned null - clipping failed!')
+          
+          // Check if we can create externally accessible URLs
+          const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+          // Only client-side accessible env vars work here
+          const hasExternalUrl = process.env.NEXT_PUBLIC_BASE_URL
+          
+          if (isLocalhost && !hasExternalUrl) {
+            console.log('🌍 Local development without external URL detected')
+            console.log('🔀 Skipping audio clipping - using original Mureka URL for LemonSlice compatibility')
+            console.log('💡 To enable audio clipping in local dev, set NEXT_PUBLIC_BASE_URL with your ngrok URL')
+            // Use original external URL that LemonSlice can access
+            finalAudioUrl = audioUrl
+          } else {
+            try {
+              const { createClippedAudio } = await import('./SongGeneration')
+              const clippedAudioUrl = await createClippedAudio(audioUrl, currentSong.audioSelection)
+              if (clippedAudioUrl) {
+                // Check if the clipped URL is accessible externally
+                if (clippedAudioUrl.includes('localhost') && !hasExternalUrl) {
+                  console.log('⚠️ Clipped audio URL is localhost but no external URL configured')
+                  console.log('🔀 Falling back to original Mureka URL for LemonSlice compatibility')
+                  finalAudioUrl = audioUrl
+                } else {
+                  finalAudioUrl = clippedAudioUrl
+                  console.log('✅ 🎉 SUCCESSFULLY created clipped audio for MelodyGram:', clippedAudioUrl.substring(0, 50) + '...')
+                  console.log('🎵 Clipped duration:', currentSong.audioSelection.duration, 'seconds')
+                  console.log('🎵 Original vs clipped:', (currentSong.originalDuration || 'unknown'), 's →', currentSong.audioSelection.duration, 's')
+                }
+              } else {
+                console.error('❌ createClippedAudio returned null - using original audio')
+                finalAudioUrl = audioUrl
+              }
+            } catch (error) {
+              console.error('❌ Could not create clipped audio, using full audio:', error)
+              finalAudioUrl = audioUrl
             }
-          } catch (error) {
-            console.error('❌ Could not create clipped audio, using full audio:', error)
           }
         } else {
           console.log('❌ Missing audio selection data:')
