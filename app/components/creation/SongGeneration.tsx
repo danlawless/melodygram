@@ -5,6 +5,7 @@ import { Music, Loader2, Play, Pause, Volume2, Heart, Trash2, Check, Download } 
 import { murekaApiService } from '../../services/murekaApi'
 import { songStorageService, type AudioSelection } from '../../services/songStorage'
 import { getCreditsForLength } from '../../services/creditSystem'
+import { useAudioGenderAnalysis } from '../../hooks/useAudioGenderAnalysis'
 
 // Helper function to create clipped audio from a selection (Browser + Upload)
 export const createClippedAudio = async (audioUrl: string, selection: AudioSelection): Promise<string | null> => {
@@ -280,6 +281,9 @@ export default function SongGeneration({
   const [isDragging, setIsDragging] = useState<'start' | 'end' | 'playback' | null>(null)
   const [waveformData, setWaveformData] = useState<number[]>([])
   const [isLoadingWaveform, setIsLoadingWaveform] = useState(false)
+
+  // Audio gender analysis hook
+  const { analyzeAudioGender, isAnalyzing: isAnalyzingGender, result: genderAnalysisResult } = useAudioGenderAnalysis()
 
   // Session storage for generated songs
   const SESSION_KEY = 'melodygram_generated_songs'
@@ -693,6 +697,56 @@ export default function SongGeneration({
         }
         
         setGeneratedSong(newSong)
+        
+        // 🎤 AUDIO GENDER ANALYSIS - Analyze if the generated vocals match the selected gender
+        console.log('🎤 =================== STARTING AUDIO GENDER ANALYSIS ===================')
+        console.log('🎤 Analyzing generated song for vocal gender characteristics...')
+        setGenerationStatus('Analyzing vocal characteristics...')
+        
+        // Extract expected gender from selectedVocal
+        const expectedGender = selectedVocal?.toLowerCase().includes('female') ? 'female' : 
+                              selectedVocal?.toLowerCase().includes('male') ? 'male' : 
+                              selectedVocal?.toLowerCase().includes('woman') ? 'female' :
+                              selectedVocal?.toLowerCase().includes('man') ? 'male' :
+                              'female' // Default fallback
+        
+        // Perform audio gender analysis (don't await - run in background)
+        analyzeAudioGender({
+          audioUrl: audioUrl,
+          selectedGender: expectedGender,
+          songTitle: songTitle
+        }).then(result => {
+          if (result) {
+            console.log('🎤 ================= AUDIO GENDER ANALYSIS COMPLETE =================')
+            console.log('🎤 🎯 Expected Gender:', result.originalSelection)
+            console.log('🎤 🎤 Detected Gender:', result.detectedGender)
+            console.log('🎤 📊 Confidence Level:', result.confidence)
+            console.log('🎤 🔄 Regeneration Needed:', result.correctionNeeded ? 'YES' : 'NO')
+            console.log('🎤 🎵 Vocal Characteristics:')
+            console.log('🎤    📈 Range:', result.audioCharacteristics.vocalRange)
+            console.log('🎤    🎨 Tone:', result.audioCharacteristics.tone)
+            console.log('🎤    📊 Pitch:', result.audioCharacteristics.pitch)
+            console.log('🎤 💭 Analysis Reasoning:', result.reasoning)
+            
+            if (result.transcription) {
+              console.log('🎤 📝 Transcribed Lyrics:', result.transcription.substring(0, 200) + '...')
+            }
+            
+            if (result.correctionNeeded) {
+              console.log('🎤 ⚠️  GENDER MISMATCH DETECTED!')
+              console.log('🎤 ⚠️  Consider regenerating with corrected gender settings')
+              console.log('🎤 ⚠️  Expected:', result.originalSelection, '| Detected:', result.detectedGender)
+            } else {
+              console.log('🎤 ✅ Gender match confirmed - vocals match expected gender')
+            }
+            console.log('🎤 ================================================================')
+            setGenerationStatus('') // Clear status after analysis
+          }
+        }).catch(error => {
+          console.error('🎤 ❌ Audio gender analysis failed:', error)
+          console.log('🎤 ❌ Continuing without gender analysis...')
+          setGenerationStatus('') // Clear status even if analysis fails
+        })
         
         // Keep favorites and limit non-favorites to total of 10
         const favorites = generationHistory.filter(song => song.favorite)
