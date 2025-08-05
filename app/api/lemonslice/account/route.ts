@@ -10,7 +10,6 @@ export async function GET() {
   try {
     // Skip API calls during build time to prevent static generation failures
     if (process.env.VERCEL_ENV === 'preview' || process.env.NODE_ENV !== 'development') {
-      // Don't make external API calls during build or in preview environments
       return NextResponse.json({
         success: true,
         account: {
@@ -22,64 +21,28 @@ export async function GET() {
       }, { status: 200 })
     }
     
-    // Additional check for missing API key
-    if (!LEMONSLICE_API_KEY || !LEMONSLICE_API_KEY.startsWith('sk-')) {
-      return NextResponse.json({
-        error: 'API not configured',
-        details: 'LemonSlice API key not properly configured'
-      }, { status: 503 })
-    }
-    
-    console.log('💳 Fetching LemonSlice account info...')
-    
-    const response = await fetch(`${LEMONSLICE_API_BASE_URL}/account`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${LEMONSLICE_API_KEY}`,
-        'Accept': 'application/json'
+    // LemonSlice API doesn't have an account endpoint
+    // Return mock account data for compatibility with existing UI
+    return NextResponse.json({
+      success: true,
+      account: {
+        balance: 10.0,
+        currency: 'USD',
+        plan: 'developer',
+        status: 'no-account-endpoint',
+        usage_today: 0,
+        usage_month: 0,
+        email: 'developer@lemonslice.com'
       },
-    })
-
-    console.log('💳 Account API response status:', response.status)
-    console.log('💳 Account API response headers:', Object.fromEntries(response.headers.entries()))
-    
-    if (!response.ok) {
-      const errorData = await response.text()
-      console.error('💳 Account API error response:', errorData)
-      
-      // Try alternative endpoint
-      const altResponse = await fetch(`${LEMONSLICE_API_BASE_URL}/user`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${LEMONSLICE_API_KEY}`,
-          'Accept': 'application/json'
-        },
-      })
-      
-      if (!altResponse.ok) {
-        const altErrorData = await altResponse.text()
-        return NextResponse.json({
-          error: 'Failed to fetch account info',
-          status: response.status,
-          details: errorData,
-          altStatus: altResponse.status,
-          altDetails: altErrorData
-        }, { status: response.status })
-      }
-      
-      const altData = await altResponse.json()
-      return NextResponse.json(altData)
-    }
-
-    const data = await response.json()
-    console.log('💳 Account data received:', data)
-    return NextResponse.json(data)
+      message: 'LemonSlice API has no account endpoint. Use /v2/generations to check usage.',
+      suggestion: 'Query recent generations to estimate usage'
+    }, { status: 200 })
 
   } catch (error) {
-    console.error('💳 Account fetch failed:', error)
+    console.error('💳 Account mock failed:', error)
     return NextResponse.json(
       { 
-        error: 'Account fetch failed', 
+        error: 'Account mock failed', 
         details: error instanceof Error ? error.message : 'Unknown error' 
       },
       { status: 500 }

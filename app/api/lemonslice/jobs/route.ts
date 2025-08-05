@@ -34,53 +34,39 @@ export async function GET(request: NextRequest) {
     console.log('📋 Fetching LemonSlice jobs list...')
     console.log('📋 Limit:', limit, 'Status filter:', status)
     
-    // Try different possible endpoints for listing jobs
-    const endpoints = [
-      `/v2/generations?limit=${limit}${status ? `&status=${status}` : ''}`,
-      `/generations?limit=${limit}${status ? `&status=${status}` : ''}`,
-      `/avatar/jobs?limit=${limit}${status ? `&status=${status}` : ''}`,
-      `/jobs?limit=${limit}${status ? `&status=${status}` : ''}`,
-      `/v2/jobs?limit=${limit}${status ? `&status=${status}` : ''}`
-    ]
+    // Use the correct LemonSlice API endpoint for listing generations
+    const endpoint = `/v2/generations?limit=${limit}${status ? `&status=${status}` : ''}`
     
-    for (const endpoint of endpoints) {
-      try {
-        console.log(`📋 Trying endpoint: ${endpoint}`)
-        
-        const response = await fetch(`${LEMONSLICE_API_BASE_URL}${endpoint}`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${LEMONSLICE_API_KEY}`,
-            'Accept': 'application/json'
-          },
-        })
+    console.log(`📋 Fetching jobs from: ${endpoint}`)
+    
+    const response = await fetch(`${LEMONSLICE_API_BASE_URL}${endpoint}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${LEMONSLICE_API_KEY}`,
+        'Accept': 'application/json'
+      },
+    })
 
-        console.log(`📋 Jobs API response status for ${endpoint}:`, response.status)
-        
-        if (response.ok) {
-          const data = await response.json()
-          console.log(`📋 Jobs data received from ${endpoint}:`, data)
-          return NextResponse.json({
-            ...data,
-            _endpoint: endpoint,
-            _success: true
-          })
-        } else {
-          const errorData = await response.text()
-          console.log(`📋 Jobs API error for ${endpoint}:`, response.status, errorData)
-        }
-        
-      } catch (endpointError) {
-        console.log(`📋 Endpoint ${endpoint} failed:`, endpointError)
-      }
-    }
+    console.log(`📋 Jobs API response status:`, response.status)
     
-    // If all endpoints failed, return error summary
-    return NextResponse.json({
-      error: 'All job listing endpoints failed',
-      attempted_endpoints: endpoints,
-      suggestion: 'LemonSlice API may not support job listing, or different authentication required'
-    }, { status: 404 })
+    if (response.ok) {
+      const data = await response.json()
+      console.log(`📋 Jobs data received:`, data)
+      return NextResponse.json({
+        ...data,
+        _endpoint: endpoint,
+        _success: true
+      })
+    } else {
+      const errorData = await response.text()
+      console.log(`📋 Jobs API error:`, response.status, errorData)
+      return NextResponse.json({
+        error: 'Failed to fetch generations',
+        status: response.status,
+        details: errorData,
+        endpoint: endpoint
+      }, { status: response.status })
+    }
 
   } catch (error) {
     console.error('📋 Jobs fetch failed:', error)

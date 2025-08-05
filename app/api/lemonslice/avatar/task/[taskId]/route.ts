@@ -25,8 +25,8 @@ export async function GET(
       }, { status: 500 })
     }
     
-    // Get jobs list from LemonSlice API
-    const response = await fetch(`${LEMONSLICE_API_BASE_URL}/v2/generations?limit=100`, {
+    // Get specific generation by ID from LemonSlice API
+    const response = await fetch(`${LEMONSLICE_API_BASE_URL}/v2/generations/${taskId}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${LEMONSLICE_API_KEY}`,
@@ -36,46 +36,21 @@ export async function GET(
 
     if (!response.ok) {
       const errorData = await response.text()
-      console.error('LemonSlice jobs list API error:', errorData)
+      console.error('LemonSlice generation API error:', errorData)
+      
+      if (response.status === 404) {
+        return NextResponse.json({
+          error: 'Generation not found',
+          job_id: taskId,
+          details: 'Job ID not found in LemonSlice API'
+        }, { status: 404 })
+      }
+      
       throw new Error(`HTTP error! status: ${response.status}, body: ${errorData}`)
     }
 
-    const data = await response.json()
-    console.log('🔍 LemonSlice jobs list response received')
-    
-    // Find the specific job in the list
-    const jobs = data.jobs || data.generations || []
-    console.log('📋 Total jobs found:', jobs.length)
-    console.log('📋 Looking for job ID:', taskId)
-    
-    // Debug: show first few job IDs
-    console.log('📋 First few job IDs:')
-    jobs.slice(0, 10).forEach((j: any, i: number) => {
-      console.log(`  ${i + 1}. ${j.job_id} (${j.status})`)
-      if (j.job_id === taskId) {
-        console.log('    ✅ FOUND MATCH!')
-      }
-    })
-    
-    const job = jobs.find((j: any) => j.job_id === taskId)
-    
-    if (!job) {
-      console.log('❌ Job not found after detailed search')
-      // Return debug info
-      return NextResponse.json({
-        error: 'Job not found',
-        debug: {
-          searchingFor: taskId,
-          totalJobs: jobs.length,
-          firstFewJobIds: jobs.slice(0, 5).map((j: any) => ({
-            id: j.job_id,
-            status: j.status
-          }))
-        }
-      }, { status: 404 })
-    }
-    
-    console.log('✅ Found job:', job.job_id, 'Status:', job.status)
+    const job = await response.json()
+    console.log('✅ Job found:', job.job_id, 'Status:', job.status)
     return NextResponse.json(job)
 
   } catch (error) {
