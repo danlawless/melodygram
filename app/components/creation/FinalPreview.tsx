@@ -157,8 +157,11 @@ export default function FinalPreview({
 
         if (!audio) {
           // Create new audio element
-          audio = new Audio(generatedSongUrl)
+          // Use our audio proxy to bypass CORS
+          const proxyUrl = `/api/proxy-audio?url=${encodeURIComponent(generatedSongUrl)}`
+          audio = new Audio(proxyUrl)
           console.log('🎵 Created new audio element for preview:', generatedSongUrl?.substring(0, 50) + '...')
+          console.log('🎵 Using audio proxy for Final Preview:', proxyUrl)
           
           audio.addEventListener('ended', () => {
             // Reset to selection start or beginning

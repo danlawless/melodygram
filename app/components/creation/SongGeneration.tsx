@@ -728,7 +728,9 @@ export default function SongGeneration({
         // Get actual audio duration
         let actualDuration = songLength
         try {
-          const audio = new Audio(audioUrl)
+          // Use our audio proxy to bypass CORS
+          const proxyUrl = `/api/proxy-audio?url=${encodeURIComponent(audioUrl)}`
+          const audio = new Audio(proxyUrl)
           await new Promise((resolve, reject) => {
             audio.addEventListener('loadedmetadata', () => {
               actualDuration = audio.duration
@@ -890,7 +892,10 @@ export default function SongGeneration({
 
           // Create new audio element
           console.log('🎵 Creating new audio element:', generatedSong.audioUrl?.substring(0, 50) + '...')
-          audio = new Audio(generatedSong.audioUrl)
+          // Use our audio proxy to bypass CORS
+          const proxyUrl = `/api/proxy-audio?url=${encodeURIComponent(generatedSong.audioUrl)}`
+          console.log('🎵 Using audio proxy for playback:', proxyUrl)
+          audio = new Audio(proxyUrl)
           
           // Ensure audio is ready for mobile
           audio.preload = 'metadata'
@@ -1256,7 +1261,10 @@ export default function SongGeneration({
       console.log('🌊 Generating waveform for:', audioUrl.substring(0, 50) + '...')
 
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
-      const response = await fetch(audioUrl)
+      // Use our audio proxy to bypass CORS
+      const proxyUrl = `/api/proxy-audio?url=${encodeURIComponent(audioUrl)}`
+      console.log('🌊 Using audio proxy for waveform:', proxyUrl)
+      const response = await fetch(proxyUrl)
       const arrayBuffer = await response.arrayBuffer()
       const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
       
