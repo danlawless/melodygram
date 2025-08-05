@@ -52,18 +52,16 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-bg-primary flex flex-col">
-      {/* Fixed Header Area - Always takes up space */}
+      {/* Fixed Header - Always visible at top */}
       {isMainScreen && (
-        <div className="flex-shrink-0">
-          <AppHeader 
-            onProfileClick={handleProfileClick}
-            onSettingsClick={handleSettingsClick}
-          />
-        </div>
+        <AppHeader 
+          onProfileClick={handleProfileClick}
+          onSettingsClick={handleSettingsClick}
+        />
       )}
       
-      {/* Main Content Area - Takes remaining space */}
-      <div className="flex-1 overflow-auto">
+      {/* Main Content Area - Takes remaining space with top padding for fixed header */}
+      <div className={`flex-1 overflow-auto ${isMainScreen ? 'pt-20' : ''}`}>
         {renderCurrentScreen()}
       </div>
       

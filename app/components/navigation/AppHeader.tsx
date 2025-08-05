@@ -26,7 +26,7 @@ export default function AppHeader({ onProfileClick, onSettingsClick }: AppHeader
   }
 
   return (
-    <div className="bg-bg-primary border-b border-border-subtle">
+    <div className="fixed top-0 left-0 right-0 z-50 bg-bg-primary border-b border-border-subtle w-full">
       <div className="flex items-center justify-between px-4 py-4">
         {/* Logo Section */}
         <div className="flex items-center gap-3">
@@ -54,7 +54,7 @@ export default function AppHeader({ onProfileClick, onSettingsClick }: AppHeader
 
           {/* Dropdown Menu */}
           {showDropdown && (
-            <div className="absolute right-0 mt-2 w-48 bg-bg-secondary border border-border-subtle rounded-xl shadow-xl py-2 animate-fade-in">
+            <div className="absolute right-0 mt-2 w-48 bg-bg-secondary border border-border-subtle rounded-xl shadow-xl py-2 animate-fade-in z-50">
               <button
                 onClick={handleProfileMenuClick}
                 className="w-full px-4 py-2 text-left text-text-primary hover:bg-bg-accent transition-colors duration-150 flex items-center gap-3"
