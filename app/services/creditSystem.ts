@@ -21,11 +21,11 @@ export const CREDIT_RATE = 0.05 // $0.05 per credit (1 credit = 1 second)
 
 // Credit calculation functions using the new 1s = 1 credit model
 export const getCreditsForLength = (seconds: number): number => {
-  return seconds // 1 second = 1 credit
+  return Math.round(seconds) // 1 second = 1 credit, rounded to whole numbers
 }
 
 export const getPriceForLength = (seconds: number): number => {
-  return seconds * CREDIT_RATE // 1 credit costs $0.05
+  return Math.round(seconds) * CREDIT_RATE // 1 credit costs $0.05, rounded seconds
 }
 
 // Helper function to explain pricing to users
@@ -123,6 +123,46 @@ class CreditSystemService {
     this.saveCredits(updatedCredits)
     console.log(`💳 Spent ${required} credits for ${songLengthSeconds}s song. Remaining: ${updatedCredits.balance}`)
     return true
+  }
+
+  /**
+   * Adjust credits when user changes audio selection (refund/charge difference)
+   */
+  adjustCreditsForSelection(originalDuration: number, newDuration: number, songId: string, songTitle: string): void {
+    // Skip during SSR
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    const originalCredits = getCreditsForLength(originalDuration)
+    const newCredits = getCreditsForLength(newDuration)
+    const difference = newCredits - originalCredits
+
+    if (difference === 0) {
+      return // No adjustment needed
+    }
+
+    const userCredits = this.getUserCredits()
+    
+    const transaction: CreditTransaction = {
+      id: this.generateTransactionId(),
+      type: difference > 0 ? 'spent' : 'refund',
+      amount: difference,
+      description: difference > 0 
+        ? `Extended "${songTitle}" selection (+${Math.abs(difference)} credits for ${newDuration}s)`
+        : `Trimmed "${songTitle}" selection (+${Math.abs(difference)} credits refunded from ${originalDuration}s to ${newDuration}s)`,
+      timestamp: new Date().toISOString(),
+      songId
+    }
+
+    const updatedCredits: UserCredits = {
+      balance: userCredits.balance - difference, // Subtract because negative difference = refund
+      transactions: [transaction, ...userCredits.transactions],
+      lastUpdated: new Date().toISOString()
+    }
+
+    this.saveCredits(updatedCredits)
+    console.log(`💳 Credit adjustment: ${difference > 0 ? 'charged' : 'refunded'} ${Math.abs(difference)} credits. New balance: ${updatedCredits.balance}`)
   }
 
   /**

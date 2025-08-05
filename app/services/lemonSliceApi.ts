@@ -70,7 +70,7 @@ class LemonSliceApiService {
         audio: request.audio,
         model: request.model || 'V2.5',
         resolution: request.resolution || '320', // Use 320px for faster processing and lower costs 
-        animation_style: request.animation_style || 'entire_image',
+        animation_style: request.animation_style || 'autoselect',
         expressiveness: request.expressiveness || 0.8,
         crop_head: request.crop_head || false
       })
@@ -109,11 +109,11 @@ class LemonSliceApiService {
   async waitForCompletion(
     taskId: string, 
     onProgress?: (progress: number, status: string) => void,
-    maxWaitTime: number = 300000 // 5 minutes
+    maxWaitTime: number = 720000 // 12 minutes (enough for longest songs)
   ): Promise<AvatarTaskStatus> {
     const startTime = Date.now()
     let retryCount = 0
-    const maxRetries = 10 // Allow up to 10 retries for 404s
+    const maxRetries = 20 // Allow up to 20 retries for 404s (LemonSlice can be slow)
     
     console.log(`🔄 Starting to poll for job completion: ${taskId}`)
 
@@ -146,7 +146,7 @@ class LemonSliceApiService {
           // Continue polling for pending/processing jobs
           if (Date.now() - startTime < maxWaitTime) {
             console.log(`🔄 Job ${taskId} still ${status.status}, continuing to poll...`)
-            setTimeout(poll, 2000) // Poll every 2 seconds
+            setTimeout(poll, 5000) // Poll every 5 seconds (less aggressive for long-running jobs)
           } else {
             reject(new Error('Avatar generation timed out'))
           }
@@ -160,8 +160,8 @@ class LemonSliceApiService {
             console.log(`🔄 Job ${taskId} not found (attempt ${retryCount}/${maxRetries}), retrying...`)
             
             if (retryCount <= maxRetries && Date.now() - startTime < maxWaitTime) {
-              // Use exponential backoff for retries: 2s, 4s, 6s, 8s, etc.
-              const delay = Math.min(2000 + (retryCount * 2000), 10000)
+              // Use exponential backoff for retries: 5s, 7s, 9s, 11s, etc.
+              const delay = Math.min(5000 + (retryCount * 2000), 15000)
               setTimeout(poll, delay)
               return
             }
@@ -176,8 +176,8 @@ class LemonSliceApiService {
         }
       }
 
-      // Start polling with a small initial delay to give the job time to appear in the API
-      setTimeout(poll, 3000) // Wait 3 seconds before first poll
+      // Start polling with a longer initial delay to give the job time to appear in the API
+      setTimeout(poll, 10000) // Wait 10 seconds before first poll
     })
   }
 

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import BlurredAvatarPreview from '../ui/BlurredAvatarPreview'
 
 interface Job {
   job_id: string
@@ -208,17 +209,65 @@ export default function JobDashboard() {
                 <tbody>
                   {jobs.map((job) => (
                     <tr key={job.job_id} className="border-b border-gray-800 hover:bg-gray-800/30">
-                      <td className="py-3 px-4 font-mono text-xs">
-                        {job.job_id.substring(0, 8)}...
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-3">
+                          {/* Mini preview for pending/processing jobs */}
+                          {(job.status === 'pending' || job.status === 'processing') ? (
+                            <BlurredAvatarPreview 
+                              status={job.status as 'pending' | 'processing' | 'completed' | 'failed'}
+                              imageUrl={job.img_url}
+                              size="small"
+                              className="rounded-lg"
+                              showStatusText={false}
+                            />
+                          ) : job.thumbnail_url || job.video_url ? (
+                            <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-700">
+                              <img 
+                                src={job.thumbnail_url || job.video_url} 
+                                alt="Thumbnail" 
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.parentElement.innerHTML = '<div class="w-full h-full bg-gray-700 flex items-center justify-center text-xs text-gray-400">📹</div>'
+                                }}
+                              />
+                            </div>
+                          ) : (
+                            <div className="w-10 h-10 rounded-lg bg-gray-700 flex items-center justify-center text-xs text-gray-400">
+                              📹
+                            </div>
+                          )}
+                          
+                          <div className="font-mono text-xs">
+                            {job.job_id.substring(0, 8)}...
+                          </div>
+                        </div>
                       </td>
                       <td className={`py-3 px-4 font-medium ${getStatusColor(job.status)}`}>
-                        {job.status}
+                        <div className="flex items-center gap-2">
+                          {job.status === 'processing' && (
+                            <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" />
+                          )}
+                          {job.status === 'pending' && (
+                            <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" />
+                          )}
+                          {job.status}
+                        </div>
                       </td>
                       <td className="py-3 px-4 text-gray-400">
                         {formatDate(job.created_at)}
                       </td>
                       <td className="py-3 px-4">
-                        {job.progress !== undefined ? `${job.progress}%` : '-'}
+                        {job.progress !== undefined ? (
+                          <div className="flex items-center gap-2">
+                            <div className="w-12 bg-gray-700 rounded-full h-2">
+                              <div 
+                                className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-300"
+                                style={{ width: `${job.progress}%` }}
+                              />
+                            </div>
+                            <span className="text-xs">{job.progress}%</span>
+                          </div>
+                        ) : '-'}
                       </td>
                       <td className="py-3 px-4">
                         {formatCost(job.cost)}

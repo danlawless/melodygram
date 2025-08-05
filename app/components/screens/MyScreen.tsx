@@ -3,9 +3,13 @@
 import React, { useState, useEffect } from 'react'
 import { User, Music, Download, Share2, Play, MoreVertical, ExternalLink, Eye, DollarSign, Search, Filter, Grid, List, Calendar, Clock, Video, Settings } from 'lucide-react'
 import { songStorageService, SavedSong } from '../../services/songStorage'
+import { downloadService } from '../../services/downloadService'
 import VideoPlayer from '../player/VideoPlayer'
 import MiniVideoPlayer from '../player/MiniVideoPlayer'
 import VideoThumbnail from '../video/VideoThumbnail'
+import BlurredAvatarPreview from '../ui/BlurredAvatarPreview'
+import ShareModal from '../ui/ShareModal'
+import { ShareOptions } from '../../services/shareService'
 
 interface MyScreenProps {
   onProfileClick?: () => void
@@ -18,7 +22,7 @@ export default function MyScreen({ onProfileClick }: MyScreenProps) {
   const [loadingJobs, setLoadingJobs] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
-  const [filterStatus, setFilterStatus] = useState<'all' | 'completed' | 'processing'>('all')
+  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'completed' | 'processing' | 'failed'>('active')
   const [sortBy, setSortBy] = useState<'newest' | 'oldest'>('newest')
   
   // Video Player State
@@ -29,6 +33,10 @@ export default function MyScreen({ onProfileClick }: MyScreenProps) {
   } | null>(null)
   const [isPlayerOpen, setIsPlayerOpen] = useState(false)
   const [showMiniPlayer, setShowMiniPlayer] = useState(false)
+  
+  // Share Modal State
+  const [showShareModal, setShowShareModal] = useState(false)
+  const [currentShareOptions, setCurrentShareOptions] = useState<ShareOptions | null>(null)
 
   // Load jobs from LemonSlice API
   const loadJobsFromAPI = async () => {
@@ -116,29 +124,27 @@ export default function MyScreen({ onProfileClick }: MyScreenProps) {
     setCurrentVideo(null)
   }
 
-  const handleDownloadVideo = (videoUrl: string, title: string) => {
-    if (videoUrl) {
-      const link = document.createElement('a')
-      link.href = videoUrl
-      link.download = `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.mp4`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-    }
+  const handleDownloadVideo = async (videoUrl: string, title: string) => {
+    await downloadService.downloadVideo(videoUrl, title)
   }
 
-  const handleShareVideo = (videoUrl: string, jobId: string) => {
-    if (navigator.share) {
-      navigator.share({
-        title: `MelodyGram Avatar Video`,
-        text: 'Check out my AI-generated avatar video!',
-        url: videoUrl
-      })
-    } else {
-      // Fallback: copy to clipboard
-      navigator.clipboard.writeText(videoUrl)
-      alert('Video URL copied to clipboard!')
+  const handleShareVideo = (videoUrl: string, jobId: string, songTitle?: string, lyrics?: string) => {
+    // Find the job data to get additional metadata
+    const job = allJobs.find(j => j.job_id === jobId)
+    
+    const shareOptions: ShareOptions = {
+      videoUrl,
+      title: songTitle || job?.songTitle || `MelodyGram Avatar #${jobId.substring(0, 8)}`,
+      lyrics: lyrics || job?.lyrics,
+      thumbnailUrl: job?.thumbnail_url,
+      duration: job?.duration,
+      genre: job?.genre,
+      mood: job?.mood,
+      jobId
     }
+    
+    setCurrentShareOptions(shareOptions)
+    setShowShareModal(true)
   }
 
   // Enhanced video data with song titles
@@ -160,10 +166,12 @@ export default function MyScreen({ onProfileClick }: MyScreenProps) {
     const enhancedVideos = getEnhancedVideoData()
     
     let filtered = enhancedVideos.filter(job => {
-      // Status filter
+      // Status filter - 'active' excludes failed jobs by default
       const statusMatch = filterStatus === 'all' || 
+        (filterStatus === 'active' && job.status !== 'failed') ||
         (filterStatus === 'completed' && job.status === 'completed') ||
-        (filterStatus === 'processing' && (job.status === 'processing' || job.status === 'pending'))
+        (filterStatus === 'processing' && (job.status === 'processing' || job.status === 'pending')) ||
+        (filterStatus === 'failed' && job.status === 'failed')
       
       // Search filter (now includes song titles)
       const searchMatch = searchTerm === '' || 
@@ -247,17 +255,6 @@ export default function MyScreen({ onProfileClick }: MyScreenProps) {
             </div>
             
             <div className="flex items-center gap-3">
-              {/* Edit Profile Button */}
-              {onProfileClick && (
-                <button
-                  onClick={onProfileClick}
-                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-medium hover:scale-105 transition-transform shadow-lg"
-                >
-                  <Settings className="w-4 h-4" />
-                  Edit Profile
-                </button>
-              )}
-              
               {/* View Toggle */}
               <div className="flex items-center gap-2 bg-white/5 rounded-lg p-1">
                 <button
@@ -298,9 +295,11 @@ export default function MyScreen({ onProfileClick }: MyScreenProps) {
               </div>
               <div className="text-sm text-yellow-300">Processing</div>
             </div>
-            <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 backdrop-blur-sm border border-blue-500/30 rounded-2xl p-4 text-center">
-              <div className="text-3xl font-bold text-blue-400 mb-1">{allJobs.length}</div>
-              <div className="text-sm text-blue-300">Total Generated</div>
+            <div className="bg-gradient-to-r from-purple-500/20 to-blue-500/20 backdrop-blur-sm border border-purple-500/30 rounded-2xl p-4 text-center">
+              <div className="text-3xl font-bold text-purple-400 mb-1">
+                {allJobs.filter(job => job.status === 'completed' || job.status === 'processing' || job.status === 'pending').length}
+              </div>
+              <div className="text-sm text-purple-300">Total Active</div>
             </div>
           </div>
 
@@ -324,9 +323,11 @@ export default function MyScreen({ onProfileClick }: MyScreenProps) {
               onChange={(e) => setFilterStatus(e.target.value as any)}
               className="melody-dropdown"
             >
-              <option value="all">All Status</option>
-              <option value="completed">Completed</option>
-              <option value="processing">Processing</option>
+                              <option value="active">Active (Default)</option>
+                <option value="all">All Status</option>
+                <option value="completed">Completed</option>
+                <option value="processing">Processing</option>
+                <option value="failed">Failed</option>
             </select>
 
             {/* Sort */}
@@ -403,23 +404,36 @@ export default function MyScreen({ onProfileClick }: MyScreenProps) {
                           onPlay={() => handleViewVideo(job.video_url, job.job_id, job.songTitle)}
                         />
                       ) : (
-                        <div className="relative w-full h-full rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center">
-                          <div className="w-16 h-16 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center">
-                            <Play className="w-6 h-6 text-white ml-1" />
-                          </div>
+                        <div className="relative w-full h-full rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center overflow-hidden">
+                          {/* Enhanced blurred avatar preview */}
+                          <BlurredAvatarPreview 
+                            status={job.status as 'pending' | 'processing' | 'completed' | 'failed'}
+                            imageUrl={job.img_url}
+                            size="large"
+                            className="rounded-xl"
+                          />
+                          
+                          {/* Play button overlay - only show when not pending/processing */}
+                          {job.status !== 'pending' && job.status !== 'processing' && (
+                            <div className="relative z-10 w-16 h-16 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center border border-white/20">
+                              <Play className="w-6 h-6 text-white ml-1" />
+                            </div>
+                          )}
                         </div>
                       )}
                       
                       {/* Status Badge */}
                       <div className="absolute top-3 left-3 z-10">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium backdrop-blur-sm ${
-                          job.status === 'completed' 
-                            ? 'bg-green-500/90 text-white border border-green-500/30' 
-                            : job.status === 'processing'
-                            ? 'bg-yellow-500/90 text-white border border-yellow-500/30'
-                            : 'bg-gray-500/90 text-white border border-gray-500/30'
-                        }`}>
-                          {job.status === 'completed' ? '✅ Ready' : job.status === 'processing' ? '⏳ Processing' : '⏸️ Pending'}
+                                              <span className={`px-2 py-1 rounded-full text-xs font-medium backdrop-blur-sm ${
+                        job.status === 'completed' 
+                          ? 'bg-green-500/90 text-white border border-green-500/30' 
+                          : job.status === 'processing'
+                          ? 'bg-yellow-500/90 text-white border border-yellow-500/30'
+                          : job.status === 'failed'
+                          ? 'bg-red-500/90 text-white border border-red-500/30'
+                          : 'bg-gray-500/90 text-white border border-gray-500/30'
+                      }`}>
+                        {job.status === 'completed' ? '✅ Ready' : job.status === 'processing' ? '⏳ Processing' : job.status === 'failed' ? '❌ Failed' : '⏸️ Pending'}
                         </span>
                       </div>
                     </div>
@@ -459,7 +473,7 @@ export default function MyScreen({ onProfileClick }: MyScreenProps) {
                               <Download className="w-4 h-4" />
                             </button>
                             <button
-                              onClick={() => handleShareVideo(job.video_url, job.job_id)}
+                              onClick={() => handleShareVideo(job.video_url, job.job_id, job.songTitle, job.lyrics)}
                               className="bg-white/10 hover:bg-white/20 px-3 py-2 rounded-lg text-white transition-all"
                               title="Share"
                             >
@@ -487,7 +501,7 @@ export default function MyScreen({ onProfileClick }: MyScreenProps) {
                   >
                     <div className="flex items-center gap-4">
                       {/* Thumbnail */}
-                      <div className="w-16 h-16 rounded-xl overflow-hidden bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex-shrink-0">
+                      <div className="w-16 h-16 rounded-xl overflow-hidden bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex-shrink-0 relative">
                         {job.status === 'completed' && job.video_url ? (
                           <VideoThumbnail
                             videoUrl={job.video_url}
@@ -497,8 +511,20 @@ export default function MyScreen({ onProfileClick }: MyScreenProps) {
                             showPlayButton={false}
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Play className="w-6 h-6 text-white/60" />
+                          <div className="w-full h-full flex items-center justify-center relative">
+                            {/* Enhanced blurred avatar preview */}
+                            <BlurredAvatarPreview 
+                              status={job.status as 'pending' | 'processing' | 'completed' | 'failed'}
+                              imageUrl={job.img_url}
+                              size="medium"
+                            />
+                            
+                            {/* Icon overlay - only show when not pending/processing */}
+                            {job.status !== 'pending' && job.status !== 'processing' && (
+                              <div className="relative z-10">
+                                <Play className="w-6 h-6 text-white/60" />
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -557,7 +583,7 @@ export default function MyScreen({ onProfileClick }: MyScreenProps) {
                             <Download className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => handleShareVideo(job.video_url, job.job_id)}
+                            onClick={() => handleShareVideo(job.video_url, job.job_id, job.songTitle, job.lyrics)}
                             className="bg-white/10 hover:bg-white/20 px-3 py-2 rounded-lg text-white transition-all"
                             title="Share"
                           >
@@ -583,7 +609,10 @@ export default function MyScreen({ onProfileClick }: MyScreenProps) {
           title={currentVideo.title}
           jobId={currentVideo.jobId}
           onDownload={() => handleDownloadVideo(currentVideo.url, `avatar_${currentVideo.jobId}`)}
-          onShare={() => handleShareVideo(currentVideo.url, currentVideo.jobId)}
+          onShare={() => {
+            const job = allJobs.find(j => j.job_id === currentVideo.jobId)
+            handleShareVideo(currentVideo.url, currentVideo.jobId, currentVideo.title, job?.lyrics)
+          }}
         />
       )}
 
@@ -596,6 +625,18 @@ export default function MyScreen({ onProfileClick }: MyScreenProps) {
           jobId={currentVideo.jobId}
           onExpand={handleExpandPlayer}
           onClose={handleCloseMiniPlayer}
+        />
+      )}
+
+      {/* Share Modal */}
+      {currentShareOptions && (
+        <ShareModal
+          isOpen={showShareModal}
+          onClose={() => {
+            setShowShareModal(false)
+            setCurrentShareOptions(null)
+          }}
+          shareOptions={currentShareOptions}
         />
       )}
 

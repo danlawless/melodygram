@@ -28,13 +28,38 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Audio URL is required' }, { status: 400 })
     }
     
+    // Extract the actual image URL if it's coming through our proxy
+    let actualImageUrl = body.image
+    console.log('🔍 Original image URL received:', body.image)
+    
+    if (body.image.includes('/api/proxy-image')) {
+      console.log('🔍 Detected proxy URL, extracting original...')
+      try {
+        // Extract the original URL from the proxy URL
+        const url = new URL(body.image, `http://localhost:3000`) // Use localhost for parsing
+        const originalUrl = url.searchParams.get('url')
+        console.log('🔍 Extracted URL parameter:', originalUrl)
+        
+        if (originalUrl) {
+          actualImageUrl = decodeURIComponent(originalUrl)
+          console.log('🔗 Successfully extracted original image URL:', actualImageUrl.substring(0, 80) + '...')
+        } else {
+          console.error('❌ No URL parameter found in proxy URL')
+        }
+      } catch (error) {
+        console.error('❌ Error parsing proxy URL:', error)
+      }
+    } else {
+      console.log('🔍 Using image URL as-is (not a proxy URL)')
+    }
+
     // Map the old format to new LemonSlice API format
     const lemonSliceRequest = {
-      img_url: body.image, // Expecting this to be a public URL now
-      audio_url: body.audio, // Expecting this to be a public URL now
+      img_url: actualImageUrl, // Now using the actual public URL
+      audio_url: body.audio, // This should already be a public URL from Mureka
       model: 'V2.5',
       resolution: '512',
-      animation_style: 'entire_image', // Use entire_image for better waist-up framing
+      animation_style: 'autoselect',
       expressiveness: 0.8,
       crop_head: false
     }

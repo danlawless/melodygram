@@ -10,12 +10,14 @@ import FinalPreview from './FinalPreview'
 import TipButton from '../ui/TipButton'
 import { lemonSliceApiService } from '../../services/lemonSliceApi'
 import { songStorageService, SavedSong } from '../../services/songStorage'
+import { genderDetectionService } from '../../services/genderDetection'
 import { murekaApiService } from '../../services/murekaApi'
 import { titleGenerationService } from '../../services/titleGeneration'
 import SongLengthSelector from './SongLengthSelector'
 // import CreditsSummary from './CreditsSummary' // Disabled for now
 import PathNavigation from './PathNavigation'
-import { creditSystemService } from '../../services/creditSystem'
+import { toastService } from '../../services/toastService'
+import { creditSystemService, getCreditsForLength } from '../../services/creditSystem'
 
 // Helper function for duration instructions
 const createDurationInstruction = (seconds: number): string => {
@@ -67,6 +69,10 @@ export default function CreationStudio() {
   
   // Gender alignment lock state
   const [genderAlignmentLocked, setGenderAlignmentLocked] = useState<boolean>(false)
+  
+  // Modal state
+  const [showCreditConfirmModal, setShowCreditConfirmModal] = useState(false)
+  const [isDryRun, setIsDryRun] = useState(false)
 
   // Session storage key
   const SESSION_KEY = 'melodygram_creation_session'
@@ -348,6 +354,10 @@ export default function CreationStudio() {
   const handleSongHistoryUpdate = (history: any[], currentIndex: number = 0) => {
     setSongHistory(history)
     setCurrentSongIndex(currentIndex)
+    // Update generation number to match the selected song index
+    const generationNumber = currentIndex + 1
+    setCurrentGenerationNumber(generationNumber)
+    console.log('🔄 Song history updated - currentIndex:', currentIndex, 'generationNumber:', generationNumber)
   }
 
   // Smart alignment system: find compatible song when locked on mismatch
@@ -485,8 +495,22 @@ export default function CreationStudio() {
     }
   }, [lyrics, selectedVocal, generateTitleFromLyrics]) // Removed isSongGenerating since no rate limiting needed
 
-  const handleGenerateMelodyGram = async () => {
+  const handleGenerateMelodyGramClick = () => {
     if (!isFormValid()) return
+    
+    // Show confirmation modal instead of immediately generating
+    setShowCreditConfirmModal(true)
+  }
+
+  const handleGenerateMelodyGram = async (dryRun: boolean = false) => {
+    // Close the modal
+    setShowCreditConfirmModal(false)
+    
+    if (dryRun) {
+      console.log('🧪 =================== DRY RUN MODE - NO ACTUAL API CALLS ===================')
+      console.log('🧪 This will test everything without sending to LemonSlice (no cost)')
+      console.log('🧪 ========================================================================')
+    }
 
     // =============== COMPREHENSIVE GENERATE BUTTON LOGGING ===============
     const generateContext = {
@@ -553,25 +577,98 @@ export default function CreationStudio() {
       // Save initial song to storage
       songStorageService.saveSong(newSong)
       console.log('🎬 Melody Gram creation started:', songTitle)
-      console.log('🎵 Using pre-generated song:', generatedSongUrl)
+      console.log('🎵 Original song URL:', generatedSongUrl)
       
-      // Step 1: Create avatar with LemonSlice API using pre-generated song
+      // Step 0: Create clipped audio if user has made a selection  
+      let finalAudioUrl = generatedSongUrl
+      
+      console.log('🔍 DEBUG: Checking for audio selection...')
+      console.log('🔍 songHistory length:', songHistory?.length || 0)
+      console.log('🔍 currentSongIndex:', currentSongIndex)
+      
+      if (songHistory && songHistory.length > 0) {
+        const currentSong = songHistory[currentSongIndex] // Use correct index
+        console.log('🔍 currentSong exists:', !!currentSong)
+        console.log('🔍 currentSong.audioSelection:', currentSong?.audioSelection)
+        console.log('🔍 currentSong properties:', currentSong ? Object.keys(currentSong) : 'none')
+        
+        const audioUrl = currentSong?.fullAudioUrl || currentSong?.audioUrl || generatedSongUrl
+        
+        if (currentSong?.audioSelection && audioUrl) {
+          console.log('🔀 ✅ FOUND audio selection, creating clipped version...')
+          console.log('🔀 Selection:', currentSong.audioSelection)
+          console.log('🔀 From audio URL:', audioUrl.substring(0, 50) + '...')
+          try {
+            const { createClippedAudio } = await import('./SongGeneration')
+            const clippedAudioUrl = await createClippedAudio(audioUrl, currentSong.audioSelection)
+            if (clippedAudioUrl) {
+              finalAudioUrl = clippedAudioUrl
+              console.log('✅ 🎉 SUCCESSFULLY created clipped audio for MelodyGram:', clippedAudioUrl.substring(0, 50) + '...')
+              console.log('🎵 Clipped duration:', currentSong.audioSelection.duration, 'seconds')
+              console.log('🎵 Original vs clipped:', (currentSong.originalDuration || 'unknown'), 's →', currentSong.audioSelection.duration, 's')
+            } else {
+              console.error('❌ createClippedAudio returned null - clipping failed!')
+            }
+          } catch (error) {
+            console.error('❌ Could not create clipped audio, using full audio:', error)
+          }
+        } else {
+          console.log('❌ Missing audio selection data:')
+          console.log('   - Has audioSelection:', !!currentSong?.audioSelection)
+          console.log('   - Has audioUrl:', !!audioUrl)
+          console.log('🎵 Using full song for MelodyGram (THIS IS EXPENSIVE!)')
+        }
+      } else {
+        console.log('❌ No songHistory found - using full song for MelodyGram (THIS IS EXPENSIVE!)')
+      }
+      console.log('🎵 Final audio URL for MelodyGram:', finalAudioUrl)
+      
+      // Step 1: Create avatar with LemonSlice API using final audio
       if (generatedImageUrl) {
         // Only create avatar if we have a generated image URL (not uploaded file)
         // LemonSlice API v2 requires public URLs for both image and audio
                 console.log('🎭 Creating avatar with LemonSlice API...')
         
-        // Fix image URL to include extension if missing (LemonSlice may require it)
-        let fixedImageUrl = generatedImageUrl
-        if (!generatedImageUrl.match(/\.(png|jpg|jpeg|webp)(\?|$)/i)) {
-          fixedImageUrl = generatedImageUrl.includes('?') 
-            ? generatedImageUrl.replace('?', '.png?') 
-            : generatedImageUrl + '.png'
-          console.log('⚠️ Added .png extension to image URL')
+        // Extract the actual DALL-E URL if it's coming through our proxy
+        console.log('🖼️ =================== IMAGE URL DEBUGGING ===================')
+        console.log('🖼️ Original generatedImageUrl:', generatedImageUrl)
+        console.log('🖼️ Starts with proxy?', generatedImageUrl.startsWith('/api/proxy-image'))
+        
+        let actualImageUrl = generatedImageUrl
+        if (generatedImageUrl.startsWith('/api/proxy-image') || generatedImageUrl.includes('/api/proxy-image')) {
+          console.log('🖼️ Detected proxy URL, extracting original...')
+          // Extract the original URL from the proxy URL
+          try {
+            const url = new URL(generatedImageUrl, `http://localhost:3000`)
+            console.log('🖼️ Parsed URL object:', url.href)
+            console.log('🖼️ URL param exists:', url.searchParams.has('url'))
+            
+            const originalUrl = url.searchParams.get('url')
+            console.log('🖼️ Extracted URL parameter:', originalUrl)
+            
+            if (originalUrl) {
+              actualImageUrl = originalUrl // DON'T decode - keep URL encoding intact for Azure signatures!
+              console.log('🔗 ✅ Successfully extracted original DALL-E URL (FULL - ENCODED):')
+              console.log('🔗 ' + actualImageUrl)
+            } else {
+              console.error('❌ No URL parameter found in proxy URL!')
+              console.log('🖼️ Will use original URL as fallback')
+            }
+          } catch (error) {
+            console.error('❌ Error parsing proxy URL:', error)
+            console.log('🖼️ Will use original URL as fallback')
+          }
+        } else {
+          console.log('🖼️ URL is already direct (not a proxy URL)')
         }
         
+        console.log('🖼️ Final actualImageUrl:', actualImageUrl)
+        console.log('🖼️ ===========================================================')
+        
+        let fixedImageUrl = actualImageUrl
+        
         console.log('🎭 Using Image URL:', fixedImageUrl)
-        console.log('🎭 Audio URL:', generatedSongUrl)
+        console.log('🎭 Audio URL:', finalAudioUrl)
         
         try {
           // COST PROTECTION: Estimate cost before proceeding (same as working test)
@@ -591,15 +688,16 @@ export default function CreationStudio() {
           }
 
           console.log('🎬 Starting avatar creation...')
+          console.log('⏰ Expected processing time: 2-10 minutes depending on song length')
           
           const lemonSliceParams = {
             image: fixedImageUrl,
-            audio: generatedSongUrl!,
+            audio: finalAudioUrl!,
             title: songTitle, // Pass the song title
             songLength: songLength, // Pass song length for better generation
-            model: 'V2.5', // Using V2.5 model (not V2.7)
-            resolution: '256', // Lower resolution for cost savings (recommended by LemonSlice)
-            animation_style: 'autoselect',
+            model: 'V2.5' as const, // Using V2.5 model (not V2.7)
+            resolution: '256' as const, // Lower resolution for cost savings (recommended by LemonSlice)
+            animation_style: 'autoselect' as 'autoselect',
             expressiveness: 0.8,
             crop_head: false
           }
@@ -607,6 +705,38 @@ export default function CreationStudio() {
           console.log('🎭 =================== LEMONSLICE API CALL PARAMS ===================')
           console.log('🎭 PARAMETERS SENT TO LEMONSLICE:', JSON.stringify(lemonSliceParams, null, 2))
           console.log('🎭 ================================================================')
+          
+          if (dryRun) {
+            console.log('🧪 =================== DRY RUN RESULTS ===================')
+            console.log('🧪 SUCCESS! All parameters prepared correctly.')
+            console.log('🧪')
+            console.log('🧪 📸 IMAGE ANALYSIS:')
+            console.log('🧪   Original URL:', generatedImageUrl)
+            console.log('🧪   Final URL (FULL):', fixedImageUrl)
+            console.log('🧪   Is proxy URL:', fixedImageUrl?.includes('/api/proxy-image') ? 'YES ❌ (BAD!)' : 'NO ✅ (GOOD!)')
+            console.log('🧪   Is DALL-E URL:', fixedImageUrl?.includes('oaidalleapiprodscus.blob.core.windows.net') ? 'YES ✅ (GOOD!)' : 'NO ❌ (BAD!)')
+            console.log('🧪')
+            console.log('🧪 🎵 AUDIO ANALYSIS:')
+            console.log('🧪   Final URL (FULL):', finalAudioUrl)
+            console.log('🧪   Is clipped:', finalAudioUrl?.includes('temp-audio') ? 'YES ✅ (GOOD!)' : 'NO ❌ (using full song - EXPENSIVE!)')
+            console.log('🧪')
+            if (fixedImageUrl?.includes('/api/proxy-image')) {
+              console.log('🧪 ❌ WARNING: Still using proxy URL for image! LemonSlice cannot access this.')
+              console.log('🧪 ❌ This will cause the generation to fail.')
+            } else if (fixedImageUrl?.includes('oaidalleapiprodscus.blob.core.windows.net')) {
+              console.log('🧪 ✅ PERFECT! Using direct DALL-E URL that LemonSlice can access.')
+            } else {
+              console.log('🧪 ⚠️  Unknown image URL format. Check if LemonSlice can access this URL.')
+            }
+            console.log('🧪')
+            console.log('🧪 Everything looks good! Uncheck dry run to proceed with real generation.')
+            console.log('🧪 ====================================================')
+            
+            // Show success notification for dry run
+            console.log('🧪 Dry run completed successfully! Check console logs above for detailed results.')
+            alert('🧪 Dry Run Completed!\n\nCheck the browser console for detailed results.\n\nIf everything looks good, uncheck "Dry Run Mode" and run again for real generation.')
+            return
+          }
           
           const avatarResponse = await lemonSliceApiService.createAvatar(lemonSliceParams)
           
@@ -638,16 +768,82 @@ export default function CreationStudio() {
           
           if (avatarResult?.video_url) {
             console.log('✅ Avatar generation completed:', avatarResult.video_url)
+            
+            // 🔍 GENDER DETECTION & CORRECTION STEP
+            // Only proceed if selectedVocal is male or female
+            if (selectedVocal === 'male' || selectedVocal === 'female') {
+              let finalGender: 'male' | 'female' = selectedVocal // Now TypeScript knows this is safe
+              
+              try {
+                // Use the image URL from the creation response since AvatarTaskStatus doesn't have img_url
+                const imageUrlForAnalysis = avatarResponse.img_url
+                
+                if (imageUrlForAnalysis) {
+                console.log('🔍 Running gender detection on generated avatar...')
+                
+                const genderAnalysis = await genderDetectionService.analyzeAvatarGender(
+                  imageUrlForAnalysis,
+                  selectedVocal
+                )
+                
+                // Log any mismatches for analytics
+                genderDetectionService.logGenderMismatch(genderAnalysis, avatarResult.job_id || avatarResponse.job_id)
+                
+                // Get the corrected gender (will be original if no correction needed)
+                finalGender = genderDetectionService.getCorrectedGender(genderAnalysis)
+                
+                if (genderAnalysis.correctionNeeded) {
+                  console.log(`🔧 Gender correction applied: ${selectedVocal} → ${finalGender}`)
+                  console.log(`   Reason: ${genderAnalysis.reasoning}`)
+                  
+                  // 🎯 UPDATE UI TO REFLECT CORRECTED GENDER
+                  setSelectedVocal(finalGender)
+                  console.log(`🎨 UI updated to show corrected gender: ${finalGender}`)
+                  
+                  // 🎨 SHOW USER-FRIENDLY NOTIFICATION
+                  toastService.info(
+                    `Avatar Gender Adjusted`, 
+                    `AI detected your avatar appears ${finalGender}. Gender selection updated automatically for better audio sync.`,
+                    8000 // Show for 8 seconds
+                  )
+                } else {
+                  console.log(`✅ Avatar gender matches selection: ${selectedVocal}`)
+                }
+                } else {
+                  console.log('⚠️ Skipping gender detection - no image URL available')
+                }
+              } catch (genderError) {
+                console.warn('⚠️ Gender detection failed, using original selection:', genderError)
+                // Continue with original selection if detection fails
+              }
+              
+              // Update song storage with corrected gender
+              songStorageService.updateSong(songId, { 
+                videoUrl: avatarResult.video_url,
+                thumbnailUrl: avatarResult.thumbnail_url,
+                duration: avatarResult.duration,
+                completedAt: new Date().toISOString(),
+                progress: 100,
+                genre: 'Pop', // Default for now
+                mood: finalGender === 'male' ? 'Confident' : 'Happy', // Use corrected gender for mood
+                vocalGender: finalGender // Store the corrected gender for future reference
+              })
+            } else {
+              console.log('⚠️ Skipping gender detection - unsupported gender selection:', selectedVocal)
+              
+              // Update song storage without gender correction
+              songStorageService.updateSong(songId, { 
+                videoUrl: avatarResult.video_url,
+                thumbnailUrl: avatarResult.thumbnail_url,
+                duration: avatarResult.duration,
+                completedAt: new Date().toISOString(),
+                progress: 100,
+                genre: 'Pop', // Default for now
+                mood: 'Happy' // Default mood
+              })
+            }
+            
             setAvatarVideoUrl(avatarResult.video_url) // Update state with video URL
-            songStorageService.updateSong(songId, { 
-              videoUrl: avatarResult.video_url,
-              thumbnailUrl: avatarResult.thumbnail_url,
-              duration: avatarResult.duration,
-              completedAt: new Date().toISOString(),
-              progress: 100,
-              genre: 'Pop', // Default for now
-              mood: selectedVocal === 'male' ? 'Confident' : 'Happy'
-            })
             console.log('🎉 Song and avatar creation completed successfully!')
             
             // Clear creation caches after successful generation to start fresh next time
@@ -669,7 +865,7 @@ export default function CreationStudio() {
         
         songStorageService.updateSong(songId, {
           status: 'completed',
-          audioUrl: generatedSongUrl!, // Save the audio URL
+          audioUrl: finalAudioUrl!, // Save the final (potentially clipped) audio URL
           completedAt: new Date().toISOString(),
           progress: 100,
           genre: 'Pop',
@@ -873,6 +1069,7 @@ export default function CreationStudio() {
               currentGenerationNumber={currentGenerationNumber}
               totalGenerations={totalGenerations}
               lyrics={lyrics}
+              audioSelection={songHistory && songHistory.length > 0 ? songHistory[currentSongIndex]?.audioSelection : undefined}
               hasMultipleAvatars={avatarHistory.length > 1}
               hasMultipleAudio={(() => {
                 if (!genderAlignmentLocked) return songHistory.length > 1
@@ -904,7 +1101,7 @@ export default function CreationStudio() {
 
           <div className="text-center space-y-4">
             <button
-              onClick={handleGenerateMelodyGram}
+              onClick={handleGenerateMelodyGramClick}
               disabled={!isFormValid() || isGenerating}
               className={`w-full py-4 px-8 rounded-xl font-bold text-lg transition-all duration-300 ${
                 isFormValid() && !isGenerating
@@ -948,6 +1145,211 @@ export default function CreationStudio() {
           />
         </div> */}
       </div>
+
+      {/* Credit Confirmation Modal */}
+      {showCreditConfirmModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 max-w-md w-full shadow-2xl">
+            <div className="text-center space-y-4">
+              {/* Header */}
+              <div className="flex items-center justify-center space-x-2 mb-4">
+                <Zap className="w-6 h-6 text-yellow-400" />
+                <h3 className="text-xl font-semibold text-white">Confirm MelodyGram Generation</h3>
+              </div>
+
+              {/* Credit Information */}
+              <div className="bg-gray-800 rounded-lg p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-300">Song Duration:</span>
+                  <span className="text-white font-medium">
+                    {(() => {
+                      if (songHistory && songHistory.length > 0) {
+                        const currentSong = songHistory[currentSongIndex]
+                        if (currentSong?.audioSelection) {
+                          return `${Math.round(currentSong.audioSelection.duration)}s (selected)`
+                        }
+                        return `${Math.round(currentSong?.targetDuration || songLength)}s`
+                      }
+                      return `${songLength}s`
+                    })()}
+                  </span>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-300">Credit Cost:</span>
+                  <span className="text-purple-400 font-bold text-lg">
+                    {(() => {
+                      if (songHistory && songHistory.length > 0) {
+                        const currentSong = songHistory[currentSongIndex]
+                        if (currentSong?.audioSelection) {
+                          return `${getCreditsForLength(currentSong.audioSelection.duration)} credits`
+                        }
+                        return `${getCreditsForLength(currentSong?.targetDuration || songLength)} credits`
+                      }
+                      return `${getCreditsForLength(songLength)} credits`
+                    })()}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-gray-700">
+                  <span className="text-gray-300">Your Balance:</span>
+                  <span className="text-green-400 font-medium">
+                    {creditSystemService.getUserCredits().balance} credits
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-300">After Generation:</span>
+                  <span className={`font-medium ${
+                    (() => {
+                      const costCredits = (() => {
+                        if (songHistory && songHistory.length > 0) {
+                          const currentSong = songHistory[currentSongIndex]
+                          if (currentSong?.audioSelection) {
+                            return getCreditsForLength(currentSong.audioSelection.duration)
+                          }
+                          return getCreditsForLength(currentSong?.targetDuration || songLength)
+                        }
+                        return getCreditsForLength(songLength)
+                      })()
+                      const remaining = creditSystemService.getUserCredits().balance - costCredits
+                      return remaining >= 0 ? 'text-green-400' : 'text-red-400'
+                    })()
+                  }`}>
+                    {(() => {
+                      const costCredits = (() => {
+                        if (songHistory && songHistory.length > 0) {
+                          const currentSong = songHistory[currentSongIndex]
+                          if (currentSong?.audioSelection) {
+                            return getCreditsForLength(currentSong.audioSelection.duration)
+                          }
+                          return getCreditsForLength(currentSong?.targetDuration || songLength)
+                        }
+                        return getCreditsForLength(songLength)
+                      })()
+                      const remaining = creditSystemService.getUserCredits().balance - costCredits
+                      return `${remaining} credits`
+                    })()}
+                  </span>
+                </div>
+              </div>
+
+              {/* Selection Info */}
+              {songHistory && songHistory.length > 0 && songHistory[currentSongIndex]?.audioSelection && (
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+                  <p className="text-sm text-blue-400">
+                    💡 You've selected a {Math.round(songHistory[currentSongIndex].audioSelection!.duration)}s segment. 
+                    Only this portion will be used in your MelodyGram.
+                  </p>
+                </div>
+              )}
+
+              {/* Insufficient Credits Warning */}
+              {(() => {
+                const costCredits = (() => {
+                  if (songHistory && songHistory.length > 0) {
+                    const currentSong = songHistory[currentGenerationNumber]
+                    if (currentSong?.audioSelection) {
+                      return getCreditsForLength(currentSong.audioSelection.duration)
+                    }
+                    return getCreditsForLength(currentSong?.targetDuration || songLength)
+                  }
+                  return getCreditsForLength(songLength)
+                })()
+                const hasEnoughCredits = creditSystemService.getUserCredits().balance >= costCredits
+                
+                if (!hasEnoughCredits) {
+                  return (
+                    <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+                      <p className="text-sm text-red-400">
+                        ⚠️ Insufficient credits! You need {costCredits - creditSystemService.getUserCredits().balance} more credits.
+                      </p>
+                    </div>
+                  )
+                }
+                return null
+              })()}
+
+              {/* Dry Run Option */}
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
+                <label className="flex items-center space-x-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isDryRun}
+                    onChange={(e) => setIsDryRun(e.target.checked)}
+                    className="w-4 h-4 text-yellow-600 bg-gray-100 border-gray-300 rounded focus:ring-yellow-500 focus:ring-2"
+                  />
+                  <div>
+                    <span className="text-sm font-medium text-yellow-400">🧪 Dry Run Mode</span>
+                    <p className="text-xs text-yellow-300 mt-1">
+                      Test audio clipping without sending to LemonSlice (no cost). Perfect for verifying everything works before spending credits.
+                    </p>
+                  </div>
+                </label>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex space-x-3 pt-4">
+                <button
+                  onClick={() => setShowCreditConfirmModal(false)}
+                  className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleGenerateMelodyGram(isDryRun)}
+                  disabled={(() => {
+                    const costCredits = (() => {
+                      if (songHistory && songHistory.length > 0) {
+                        const currentSong = songHistory[currentSongIndex]
+                        if (currentSong?.audioSelection) {
+                          return getCreditsForLength(currentSong.audioSelection.duration)
+                        }
+                        return getCreditsForLength(currentSong?.targetDuration || songLength)
+                      }
+                      return getCreditsForLength(songLength)
+                    })()
+                    return creditSystemService.getUserCredits().balance < costCredits
+                  })()}
+                  className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
+                    (() => {
+                      const costCredits = (() => {
+                        if (songHistory && songHistory.length > 0) {
+                          const currentSong = songHistory[currentSongIndex]
+                          if (currentSong?.audioSelection) {
+                            return getCreditsForLength(currentSong.audioSelection.duration)
+                          }
+                          return getCreditsForLength(currentSong?.targetDuration || songLength)
+                        }
+                        return getCreditsForLength(songLength)
+                      })()
+                      const hasEnoughCredits = creditSystemService.getUserCredits().balance >= costCredits
+                      return hasEnoughCredits 
+                        ? 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white'
+                        : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                    })()
+                  }`}
+                >
+                  {isDryRun ? '🧪 Run Dry Test' : (() => {
+                    const costCredits = (() => {
+                      if (songHistory && songHistory.length > 0) {
+                        const currentSong = songHistory[currentSongIndex]
+                        if (currentSong?.audioSelection) {
+                          return getCreditsForLength(currentSong.audioSelection.duration)
+                        }
+                        return getCreditsForLength(currentSong?.targetDuration || songLength)
+                      }
+                      return getCreditsForLength(songLength)
+                    })()
+                    const hasEnoughCredits = creditSystemService.getUserCredits().balance >= costCredits
+                    return hasEnoughCredits ? `Generate MelodyGram (${costCredits} credits)` : 'Insufficient Credits'
+                  })()}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 } 

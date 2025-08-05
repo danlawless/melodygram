@@ -19,6 +19,13 @@ interface FinalPreviewProps {
   // Lyrics preview (should match the selected generation)
   lyrics: string
   
+  // Audio selection data (for playing only the selected segment)
+  audioSelection?: {
+    startTime: number
+    endTime: number  
+    duration: number
+  }
+  
   // Navigation handlers
   onPreviousAvatar?: () => void
   onNextAvatar?: () => void
@@ -45,6 +52,7 @@ export default function FinalPreview({
   currentGenerationNumber,
   totalGenerations,
   lyrics,
+  audioSelection,
   onPreviousAvatar,
   onNextAvatar,
   onPreviousAudio,
@@ -59,6 +67,7 @@ export default function FinalPreview({
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
+  const [currentAudioSelection, setCurrentAudioSelection] = useState<typeof audioSelection>(null)
 
   // Get the image URL to display
   const imageUrl = uploadedImageUrl || generatedImageUrl
@@ -120,12 +129,16 @@ export default function FinalPreview({
         if (!audio) {
           // Create new audio element
           audio = new Audio(generatedSongUrl)
+          console.log('🎵 Created new audio element for preview:', generatedSongUrl?.substring(0, 50) + '...')
           
           audio.addEventListener('ended', () => {
-            audio.currentTime = 0
+            // Reset to selection start or beginning
+            const resetTime = audioSelection ? audioSelection.startTime : 0
+            audio.currentTime = resetTime
             audio.volume = 1.0
             setIsPlaying(false)
             setCurrentTime(0)
+            console.log('🎵 Audio ended, reset to:', resetTime)
           })
 
           audio.addEventListener('error', (e) => {
@@ -134,50 +147,119 @@ export default function FinalPreview({
           })
 
           audio.addEventListener('loadedmetadata', () => {
-            setDuration(songLength) // Use target duration
+            // Use selected segment duration if available, otherwise target duration
+            const previewDuration = audioSelection ? audioSelection.duration : songLength
+            setDuration(previewDuration)
           })
 
+          let isSeekingToStart = false // Prevent infinite loop
+          
           audio.addEventListener('timeupdate', () => {
             const currentTime = audio.currentTime
-            const targetDuration = songLength
-            const fadeInDuration = 0.5
-            const fadeOutDuration = 0.5
-            const fadeOutStartTime = targetDuration - fadeOutDuration
             
-            // Smooth fade-in during the first 0.5 seconds
-            if (currentTime <= fadeInDuration) {
-              const fadeProgress = currentTime / fadeInDuration
-              const volume = Math.min(1, fadeProgress)
-              audio.volume = volume
-            }
-            // Smooth fade-out in the last 0.5 seconds  
-            else if (currentTime >= fadeOutStartTime && currentTime < targetDuration) {
-              const fadeProgress = (currentTime - fadeOutStartTime) / fadeOutDuration
-              const volume = Math.max(0, 1 - fadeProgress)
-              audio.volume = volume
-            }
-            // Full volume in the middle section
-            else if (currentTime > fadeInDuration && currentTime < fadeOutStartTime) {
-              audio.volume = 1.0
-            }
-            
-            // Auto-pause when reaching target duration
-            if (currentTime >= targetDuration) {
-              audio.pause()
-              audio.currentTime = 0
-              audio.volume = 1.0
-              setIsPlaying(false)
-              setCurrentTime(0)
+            if (audioSelection) {
+              // When we have an audio selection, play only that segment
+              const selectionDuration = audioSelection.duration
+              const fadeInDuration = Math.min(0.5, selectionDuration * 0.1) // 10% or 0.5s max
+              const fadeOutDuration = Math.min(0.5, selectionDuration * 0.1) // 10% or 0.5s max
+              const relativeTime = currentTime - audioSelection.startTime // Time within selection
+              const fadeOutStartTime = selectionDuration - fadeOutDuration
+              
+              // Auto-pause when reaching end of selection
+              if (currentTime >= audioSelection.endTime) {
+                console.log('🎵 Reached end of selection, resetting to start')
+                audio.pause()
+                isSeekingToStart = true
+                audio.currentTime = audioSelection.startTime
+                audio.volume = 1.0
+                setIsPlaying(false)
+                setCurrentTime(0) // Reset to start of selection for display
+                setTimeout(() => { isSeekingToStart = false }, 100) // Reset flag after brief delay
+                return
+              }
+              
+              // If we're before the selection start, jump to start (with loop prevention)
+              if (currentTime < audioSelection.startTime && !isSeekingToStart) {
+                console.log('🔧 FIXED: Prevented infinite loop - Before selection start, jumping to:', audioSelection.startTime)
+                isSeekingToStart = true
+                audio.currentTime = audioSelection.startTime
+                setCurrentTime(0)
+                setTimeout(() => { isSeekingToStart = false }, 100) // Reset flag after brief delay
+                return
+              }
+              
+              // Only apply fade effects if we're within the selection
+              if (currentTime >= audioSelection.startTime && currentTime <= audioSelection.endTime) {
+                // Smooth fade-in during the first part of selection
+                if (relativeTime <= fadeInDuration) {
+                  const fadeProgress = relativeTime / fadeInDuration
+                  const volume = Math.min(1, fadeProgress)
+                  audio.volume = volume
+                }
+                // Smooth fade-out in the last part of selection
+                else if (relativeTime >= fadeOutStartTime && relativeTime < selectionDuration) {
+                  const fadeProgress = (relativeTime - fadeOutStartTime) / fadeOutDuration
+                  const volume = Math.max(0, 1 - fadeProgress)
+                  audio.volume = volume
+                }
+                // Full volume in the middle section
+                else if (relativeTime > fadeInDuration && relativeTime < fadeOutStartTime) {
+                  audio.volume = 1.0
+                }
+                
+                // Update display time relative to selection
+                setCurrentTime(relativeTime)
+              }
             } else {
-              setCurrentTime(currentTime)
+              // Original behavior for full song preview
+              const targetDuration = songLength
+              const fadeInDuration = 0.5
+              const fadeOutDuration = 0.5
+              const fadeOutStartTime = targetDuration - fadeOutDuration
+              
+              // Smooth fade-in during the first 0.5 seconds
+              if (currentTime <= fadeInDuration) {
+                const fadeProgress = currentTime / fadeInDuration
+                const volume = Math.min(1, fadeProgress)
+                audio.volume = volume
+              }
+              // Smooth fade-out in the last 0.5 seconds  
+              else if (currentTime >= fadeOutStartTime && currentTime < targetDuration) {
+                const fadeProgress = (currentTime - fadeOutStartTime) / fadeOutDuration
+                const volume = Math.max(0, 1 - fadeProgress)
+                audio.volume = volume
+              }
+              // Full volume in the middle section
+              else if (currentTime > fadeInDuration && currentTime < fadeOutStartTime) {
+                audio.volume = 1.0
+              }
+              
+              // Auto-pause when reaching target duration
+              if (currentTime >= targetDuration) {
+                audio.pause()
+                audio.currentTime = 0
+                audio.volume = 1.0
+                setIsPlaying(false)
+                setCurrentTime(0)
+              } else {
+                setCurrentTime(currentTime)
+              }
             }
           })
           
           setAudioElement(audio)
         }
 
-        // If we're at or near the end, reset to beginning
-        if (audio.currentTime >= songLength - 0.1) {
+        // Always start from the correct position based on current selection
+        const startTime = audioSelection ? audioSelection.startTime : 0
+        
+        // Force audio to start at the correct position
+        try {
+          audio.currentTime = startTime
+          setCurrentTime(0)
+          console.log('🎵 Starting playback from:', startTime, audioSelection ? `(selection: ${audioSelection.startTime}-${audioSelection.endTime})` : '(full song)')
+        } catch (error) {
+          console.warn('Could not set audio start time:', error)
           audio.currentTime = 0
           setCurrentTime(0)
         }
@@ -191,6 +273,34 @@ export default function FinalPreview({
       setIsPlaying(false)
     }
   }
+
+  // Reset audio when audio selection changes (source of truth)
+  useEffect(() => {
+    const selectionChanged = JSON.stringify(audioSelection) !== JSON.stringify(currentAudioSelection)
+    
+    if (selectionChanged) {
+      console.log('🔄 Audio selection changed, resetting preview:', { 
+        old: currentAudioSelection, 
+        new: audioSelection,
+        changed: selectionChanged 
+      })
+      
+      // Complete audio reset - force clean slate
+      if (audioElement) {
+        audioElement.pause()
+        audioElement.src = '' // Clear the source
+        setAudioElement(null) // Force complete recreation
+      }
+      
+      // Reset all state to match new selection
+      setIsPlaying(false)
+      setCurrentTime(0)
+      setDuration(audioSelection ? audioSelection.duration : songLength)
+      setCurrentAudioSelection(audioSelection)
+      
+      console.log('🎵 Preview completely reset - next play will use new selection')
+    }
+  }, [audioSelection])
 
   // Cleanup audio on unmount
   useEffect(() => {
@@ -290,7 +400,10 @@ export default function FinalPreview({
             <div className="flex-1 min-w-0">
               <h4 className="text-white font-bold text-lg mb-1 truncate">{songTitle}</h4>
               <p className="text-gray-300 text-sm">
-                {formatSongLength(songLength)} • {selectedVocal.charAt(0).toUpperCase() + selectedVocal.slice(1)} Voice
+                {audioSelection 
+                  ? `${formatSongLength(Math.round(audioSelection.duration))} (selected) • ${selectedVocal.charAt(0).toUpperCase() + selectedVocal.slice(1)} Voice`
+                  : `${formatSongLength(songLength)} • ${selectedVocal.charAt(0).toUpperCase() + selectedVocal.slice(1)} Voice`
+                }
               </p>
               
               {/* Gender Match Indicator */}

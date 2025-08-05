@@ -1,4 +1,10 @@
 // Song storage service for managing user's created songs
+export interface AudioSelection {
+  startTime: number
+  endTime: number
+  duration: number
+}
+
 export interface SavedSong {
   id: string
   title: string
@@ -12,6 +18,12 @@ export interface SavedSong {
   
   // Mureka API results
   audioUrl?: string
+  
+  // Audio selection data
+  fullAudioUrl?: string      // The complete generated audio
+  selectedAudioUrl?: string  // The user-selected segment
+  audioSelection?: AudioSelection // Selection metadata
+  originalDuration?: number  // Duration of the full audio
   
   // LemonSlice API results
   taskId?: string
@@ -138,6 +150,104 @@ class SongStorageService {
     } catch (error) {
       console.error('Error incrementing play count:', error)
     }
+  }
+
+  /**
+   * Save audio selection for a song
+   */
+  saveAudioSelection(songId: string, selection: AudioSelection, selectedAudioBlob: Blob): void {
+    try {
+      // Create object URL for the selected audio
+      const selectedAudioUrl = URL.createObjectURL(selectedAudioBlob)
+      
+      this.updateSong(songId, {
+        audioSelection: selection,
+        selectedAudioUrl: selectedAudioUrl,
+        duration: selection.duration,
+        // Update songLength to reflect the selected duration for credit calculation
+        songLength: selection.duration,
+        status: 'completed'
+      })
+      
+      console.log('🎵 Audio selection saved for song:', songId)
+      console.log('💳 Credit calculation updated to reflect', selection.duration, 'second selection')
+    } catch (error) {
+      console.error('Error saving audio selection:', error)
+      throw new Error('Failed to save audio selection')
+    }
+  }
+
+  /**
+   * Set full audio URL for a song (when generation completes)
+   */
+  setFullAudio(songId: string, audioUrl: string, originalDuration: number): void {
+    try {
+      // Create default selection for the target duration
+      const song = this.getSong(songId)
+      const targetDuration = song?.songLength || 30
+      const defaultSelection = {
+        startTime: 0,
+        endTime: Math.min(targetDuration, originalDuration),
+        duration: Math.min(targetDuration, originalDuration)
+      }
+
+      this.updateSong(songId, {
+        fullAudioUrl: audioUrl,
+        audioUrl: audioUrl, // Backward compatibility
+        originalDuration: originalDuration,
+        audioSelection: defaultSelection,
+        // Update duration to reflect the selected segment for credit calculation
+        duration: defaultSelection.duration,
+        status: 'completed'
+      })
+      
+      console.log('🎵 Full audio set for song:', songId)
+      console.log('💳 Default selection duration set to:', defaultSelection.duration, 'seconds')
+    } catch (error) {
+      console.error('Error setting full audio:', error)
+      throw new Error('Failed to set full audio URL')
+    }
+  }
+
+  /**
+   * Get the playable audio URL for a song (selected segment if available, otherwise full audio)
+   */
+  getPlayableAudioUrl(songId: string): string | null {
+    const song = this.getSong(songId)
+    if (!song) return null
+    
+    // Prefer selected audio, fallback to full audio, then audioUrl for backward compatibility
+    return song.selectedAudioUrl || song.fullAudioUrl || song.audioUrl || null
+  }
+
+  /**
+   * Clean up object URLs to prevent memory leaks
+   */
+  cleanupObjectUrls(songId: string): void {
+    try {
+      const song = this.getSong(songId)
+      if (!song) return
+
+      // Clean up selected audio URL if it's an object URL
+      if (song.selectedAudioUrl?.startsWith('blob:')) {
+        URL.revokeObjectURL(song.selectedAudioUrl)
+      }
+
+      // Clean up full audio URL if it's an object URL
+      if (song.fullAudioUrl?.startsWith('blob:')) {
+        URL.revokeObjectURL(song.fullAudioUrl)
+      }
+    } catch (error) {
+      console.error('Error cleaning up object URLs:', error)
+    }
+  }
+
+  /**
+   * Delete a song and clean up its object URLs
+   */
+  deleteSongWithCleanup(songId: string): void {
+    this.cleanupObjectUrls(songId)
+    this.deleteSong(songId)
   }
 }
 

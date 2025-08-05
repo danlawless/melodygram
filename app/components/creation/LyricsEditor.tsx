@@ -137,7 +137,7 @@ export default function LyricsEditor({
       
       // Use custom options if available, otherwise use defaults
       const lyricsGenParams = {
-        title: songTitle || undefined, // Pass current title if exists, otherwise let API generate one
+        title: showCustomOptions ? undefined : (songTitle || undefined), // In custom mode, generate fresh title - don't use past titles as influence
         lengthInSeconds: songLength,
         vocalGender: selectedGender as 'male' | 'female',
         genre: showCustomOptions ? selectedStyle : 'pop',

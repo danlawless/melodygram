@@ -460,7 +460,7 @@ export default function ImageUpload({ uploadedImage, onImageUpload, onImageGener
       let prompt = customPrompt.trim()
       
       if (!prompt) {
-        prompt = 'Professional waist-up portrait of a friendly person in business attire, properly clothed, warm smile, photorealistic, studio lighting, high quality'
+        prompt = 'Fun vibe waist-up portrait of a friendly person in casual attire, properly clothed, pick something fun, warm smile, photorealistic, studio lighting, high quality'
       }
 
       // Add gender specification to the prompt if selected
@@ -471,7 +471,7 @@ export default function ImageUpload({ uploadedImage, onImageUpload, onImageGener
         genderPrompt = ', GENERATE FEMALE AVATAR'
       }
 
-      const finalPrompt = `${prompt}, professional attire, properly clothed, waist-up photography style, clear facial features, upper body visible, suitable for avatar use${genderPrompt}`
+      const finalPrompt = `${prompt}, waist-up photography style, clear facial features, upper body visible, suitable for avatar use${genderPrompt}`
       
       const imageGenParams = {
         prompt: finalPrompt,
@@ -480,7 +480,7 @@ export default function ImageUpload({ uploadedImage, onImageUpload, onImageGener
         size: '1024x1024' as const,
         quality: 'hd' as const
       }
-
+ 
       console.log('🎨 =================== IMAGE GENERATION API CALL PARAMS ===================')
       console.log('🎨 Original Prompt:', prompt)
       console.log('🎨 Gender Addition:', genderPrompt)

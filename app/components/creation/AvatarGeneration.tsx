@@ -254,7 +254,7 @@ export default function AvatarGeneration({
             ></div>
           </div>
           <p className="text-xs text-gray-400 mt-2">
-            This may take 2-5 minutes depending on video length and quality settings
+            ⏰ This may take 2-10 minutes depending on song length. LemonSlice processes server-side.
           </p>
         </div>
       )}
