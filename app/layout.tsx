@@ -35,9 +35,9 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${inter.className} bg-bg-primary text-text-primary`}>
         <ToastProvider>
-          <main className="min-h-screen safe-area-top safe-area-bottom">
+          <div className="min-h-screen flex flex-col safe-area-top safe-area-bottom">
             {children}  
-          </main>
+          </div>
         </ToastProvider>
       </body>
     </html>

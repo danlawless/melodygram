@@ -51,24 +51,30 @@ export default function Home() {
   const isMainScreen = currentScreen === 'create' || currentScreen === 'my'
 
   return (
-    <div className="min-h-screen bg-bg-primary">
+    <div className="min-h-screen bg-bg-primary flex flex-col">
+      {/* Fixed Header Area - Always takes up space */}
       {isMainScreen && (
-        <AppHeader 
-          onProfileClick={handleProfileClick}
-          onSettingsClick={handleSettingsClick}
-        />
+        <div className="flex-shrink-0">
+          <AppHeader 
+            onProfileClick={handleProfileClick}
+            onSettingsClick={handleSettingsClick}
+          />
+        </div>
       )}
       
-      {/* Content area with conditional top padding for fixed header */}
-      <div className={isMainScreen ? "pt-16" : ""}>
+      {/* Main Content Area - Takes remaining space */}
+      <div className="flex-1 overflow-auto">
         {renderCurrentScreen()}
       </div>
       
+      {/* Bottom Navigation - Fixed at bottom */}
       {isMainScreen && (
-        <GlobalNavigation 
-          currentTab={currentTab} 
-          onTabChange={handleTabChange} 
-        />
+        <div className="flex-shrink-0">
+          <GlobalNavigation 
+            currentTab={currentTab} 
+            onTabChange={handleTabChange} 
+          />
+        </div>
       )}
       
       {/* <CreditDebugPanel /> */}

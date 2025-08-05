@@ -284,10 +284,10 @@ export default function MyScreen({ onProfileClick }: MyScreenProps) {
   const filteredVideos = getFilteredAndSortedVideos()
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900 pb-24">
+    <div className="bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900 pb-24">
       {/* Elegant Header */}
       <div className="bg-black/60 backdrop-blur-xl border-b border-white/10">
-        <div className="p-6">
+        <div className="px-6 py-6">
           {/* Title Section */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
